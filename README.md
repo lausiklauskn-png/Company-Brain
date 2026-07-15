@@ -39,8 +39,15 @@ Die erste **Probeversion** ist gebaut: eine schlanke, offline-fähige **Browser-
   Suche in **Millisekunden**.
 - **Virtuelle Ordnung:** aufgeräumte Gruppen (Rechnung / Vertrag / Foto / …) — **nur
   Vorschlag**, es wird nichts bewegt.
-- **Optionale EU-KI (BYOK):** standardmäßig **aus**. Erst wenn du bewusst einen eigenen
-  Schlüssel hinterlegst, darf stärkere Cloud-OCR genutzt werden — mit klarer Anzeige.
+- **Doppelte-Finder:** gleicher Inhalt an mehreren Stellen (per Fingerabdruck erkannt,
+  auch bei anderem Namen — typisch bei mehreren Arbeitsplätzen). **Freiwillige Auswahl**,
+  „alle außer je einer" auf einen Klick. Entfernt nur den **Katalog-Eintrag**, nie eine Datei.
+- **Ordner aus der App entfernen:** verbundene Ordner werden in den Einstellungen gelistet
+  und lassen sich trennen (Einträge raus, Dateien unberührt).
+- **Sprachsuche (🎤):** Suchfeld per Mikrofon diktieren (Browser-Spracherkennung, fail-soft).
+- **Optionale EU-KI (BYOK):** standardmäßig **aus**. Bild-Texterkennung wahlweise über
+  **Mistral OCR (EU)** oder **Google Cloud Vision (EU-Endpunkt)** — nur wenn du bewusst
+  einen eigenen Schlüssel hinterlegst; „Nur-EU"-Schalter erzwingt Datenhoheit.
 
 ### Ausprobieren
 
@@ -51,9 +58,10 @@ Seite installieren.
 ### Beweis (headless)
 
 `npm test` fährt die **echte App** in Chromium hoch, signiert echte Dateien und prüft:
-Bedeutung schlägt Name, PDF-/DOCX-Text wird gefunden, Dedupe greift, Suche < 1 s.
-Zuletzt grün: **8 + 3 Prüfungen bestanden (2026-07-15)**. Klaus' Browser-Sichttest am
-Tablet steht noch aus — bis dahin ehrlich: *„Logik bewiesen, Sicht am Gerät ungeprüft.“*
+Bedeutung schlägt Name, PDF-/DOCX-Text wird gefunden, Dedupe/Doppelte-Finder greift,
+Suche < 1 s. Zuletzt grün: **8 + 3 + 10 Prüfungen bestanden (2026-07-15)**. Klaus'
+Browser-Sichttest am Tablet steht noch aus — bis dahin ehrlich: *„Logik bewiesen, Sicht
+am Gerät ungeprüft.“*
 
 ## Drei Vertrauens-Säulen
 

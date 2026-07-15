@@ -6,7 +6,7 @@
   "description": "Company Brain — Probeversion: offline PWA, die Datenchaos nach Bedeutung durchsuchbar macht.",
   "scripts": {
     "icons": "node tools/make-icons.mjs",
-    "test": "node tools/e2e-test.mjs && node tools/e2e-compressed.mjs",
+    "test": "node tools/e2e-test.mjs && node tools/e2e-compressed.mjs && node tools/e2e-features.mjs",
     "serve": "python3 -m http.server 8000"
   },
   "devDependencies": {

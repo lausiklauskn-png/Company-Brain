@@ -195,6 +195,7 @@
   <div class="tabs">
     <div class="tab on" data-tab="search">🔎 Suche</div>
     <div class="tab" data-tab="order">🗂️ Ordnung <b id="tabCount"></b></div>
+    <div class="tab" data-tab="dupes">🧹 Doppelte <b id="dupCount"></b></div>
     <div class="tab" data-tab="settings">⚙️ Einstellungen</div>
   </div>
 
@@ -202,6 +203,7 @@
   <section class="panel on" id="panel-search">
     <div class="searchbox">
       <input id="q" type="search" placeholder="z. B. „das schwarze Auto, neulich bearbeitet, mit Radstand …“" autocomplete="off">
+      <button id="mic" class="ghost" title="Per Sprache suchen" aria-label="Per Sprache suchen" style="padding:11px 13px">🎤</button>
       <div class="toggle" id="mode">
         <button data-m="name">Namenssuche</button>
         <button class="on" data-m="mean">Bedeutungssuche</button>
@@ -223,6 +225,18 @@
     <p class="hint" style="margin-top:0">Ein <b>Vorschlag</b>, wie deine Dateien nach Bedeutung zusammengehören. Es wird nichts verschoben — Klick öffnet die Gruppe.</p>
     <div class="groups" id="groups"></div>
     <div class="empty" id="orderEmpty"><div class="big">🗂️</div><p>Noch keine Dateien signiert.</p></div>
+  </section>
+
+  <!-- DOPPELTE -->
+  <section class="panel" id="panel-dupes">
+    <p class="hint" style="margin-top:0">Gleicher <b>Inhalt</b> an mehreren Stellen — am Fingerabdruck erkannt, auch bei anderem Dateinamen (typisch, wenn mehrere Arbeitsplätze dieselbe Datei ablegen). <b>Freiwillige Auswahl:</b> Haken setzen und aus dem <b>Katalog</b> nehmen. Es wird <b>keine</b> deiner Dateien gelöscht — nur der Eintrag im Verzeichnis.</p>
+    <div class="btnrow" style="justify-content:flex-start;margin-bottom:12px">
+      <button id="dupSelectExtra" class="ghost">Alle außer je einer ankreuzen</button>
+      <button id="dupClearSel" class="ghost">Auswahl leeren</button>
+      <button id="dupRemove" class="primary">Ausgewählte aus Katalog entfernen</button>
+    </div>
+    <div id="dupeList"></div>
+    <div class="empty" id="dupeEmpty"><div class="big">✨</div><p>Keine doppelten Inhalte gefunden.</p></div>
   </section>
 
   <!-- EINSTELLUNGEN -->
@@ -247,15 +261,23 @@
     <div class="note">
       <h3>Optionale EU-KI (Bring-Your-Own-Key)</h3>
       <p>Aus, solange leer. Der Schlüssel bleibt nur in diesem Browser (RAM/lokal) und wird nie ins Repo geschrieben. Erst wenn gesetzt, dürfen einzelne Bilder/Texte zur EU-KI gehen — mit klarer Anzeige.</p>
-      <label class="field"><span>Anbieter</span>
+      <label class="field"><span>Anbieter für Bild-Texterkennung (OCR)</span>
         <select id="aiProvider">
           <option value="">— aus (rein offline) —</option>
-          <option value="mistral">Mistral (EU) — OCR &amp; Kurzfassung</option>
+          <option value="mistral">Mistral OCR (EU) — liest auch schwierige Scans sauber</option>
+          <option value="google">Google Cloud Vision (EU-Endpunkt) — DOCUMENT_TEXT_DETECTION</option>
         </select>
       </label>
+      <div class="switch"><input type="checkbox" id="euOnly"><label for="euOnly" style="color:var(--mut);font-size:.84rem">Nur EU-Anbieter zulassen (Datenhoheit erzwingen)</label></div>
       <label class="field"><span>API-Schlüssel (nur in diesem Browser)</span>
         <input id="aiKey" type="password" placeholder="sk-…" autocomplete="off"></label>
       <div class="switch"><input type="checkbox" id="aiPersist"><label for="aiPersist" style="color:var(--mut);font-size:.84rem">Schlüssel in diesem Browser merken (sonst nur bis zum Schließen)</label></div>
+    </div>
+
+    <div class="note">
+      <h3>Verbundene Ordner</h3>
+      <p>Zeiger auf deine Ordner — kein Inhalt wird kopiert. „Entfernen“ trennt den Ordner und nimmt seine Einträge aus dem Katalog. <b>Deine Dateien bleiben unberührt.</b></p>
+      <div id="dirList"></div>
     </div>
 
     <div class="note">
@@ -316,6 +338,7 @@ function idbPut(store,val){ return new Promise((res,rej)=>{ const r=tx(store,"re
 function idbGetAll(store){ return new Promise((res,rej)=>{ const r=tx(store).getAll(); r.onsuccess=()=>res(r.result||[]); r.onerror=()=>rej(r.error); }); }
 function idbGet(store,key){ return new Promise((res,rej)=>{ const r=tx(store).get(key); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
 function idbClear(store){ return new Promise((res,rej)=>{ const r=tx(store,"readwrite").clear(); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); }); }
+function idbDelete(store,key){ return new Promise((res,rej)=>{ const r=tx(store,"readwrite").delete(key); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); }); }
 
 /* ---------- In-Memory Katalog + invertierter Index ---------- */
 let CATALOG = [];            // [{hash,name,path,type,date,size,snippet,vector,summary,category,tokens,tf,dirId}]
@@ -532,9 +555,12 @@ async function ocrImage(blob){
       if(t) return {text:t, via:"Browser-Texterkennung"};
     }catch{}
   }
-  // 2) optional: EU-Cloud (nur wenn Schlüssel gesetzt)
-  if(AI.provider==="mistral" && AI.key){
-    try{ const t = await mistralOcr(blob); if(t) return {text:t, via:"Mistral EU (OCR)"}; }catch(e){ /* fail-soft */ }
+  // 2) optional: EU-Cloud (nur wenn Schlüssel gesetzt) — bewusst opt-in, mit klarer Herkunft
+  if(AI.key && AI.provider){
+    try{
+      if(AI.provider==="mistral"){ const t = await mistralOcr(blob); if(t) return {text:t, via:"Mistral OCR (EU)"}; }
+      else if(AI.provider==="google"){ const t = await googleVisionEU(blob); if(t) return {text:t, via:"Google Vision (EU)"}; }
+    }catch(e){ /* fail-soft */ }
   }
   return {text:"", via:""};
 }
@@ -595,7 +621,19 @@ async function signFile(entryFile, path, dirId){
   const file = entryFile;
   const buf = await file.arrayBuffer();
   const hash = await sha256(buf);
-  if(HASHSET.has(hash)) return {skipped:true, hash};
+  if(HASHSET.has(hash)){
+    // gleicher Inhalt schon bekannt -> als Doppelten VERMERKEN (nicht still verwerfen)
+    const ex = CATALOG.find(r=>r.hash===hash);
+    if(ex){
+      ex.dupes = ex.dupes||[];
+      const p = path||file.name;
+      if(p!==ex.path && !ex.dupes.some(d=>d.path===p)){
+        ex.dupes.push({path:p, size:file.size, date:file.lastModified||Date.now(), dirId:dirId||null});
+        try{ await idbPut("catalog", ex); }catch{}
+      }
+    }
+    return {skipped:true, hash, dup:true};
+  }
   const {text, via} = await readContent(file, buf);
   const toks = tokens((file.name+" ").repeat(2) + " " + text); // Name doppelt gewichten
   const rec = {
@@ -608,6 +646,7 @@ async function signFile(entryFile, path, dirId){
     category: suggestCategory(file.name, text),
     dirId: dirId||null,
     nameTokens: tokens(file.name),
+    dupes: [],
   };
   await idbPut("catalog", rec);
   CATALOG.push(rec); HASHSET.add(hash);
@@ -892,17 +931,121 @@ function showGroup(cat){
 }
 
 /* ============================================================================
-   7) OPTIONALE EU-KI (BYOK) — Mistral OCR, strikt opt-in
+   6b) DOPPELTE (freiwillige Auswahl) + ORDNER-VERWALTUNG
+   Beides ändert NUR den Katalog — nie eine echte Datei.
    ========================================================================== */
-const AI = { provider:"", key:"" };
+function locsOf(r){ return [{path:r.path, dirId:r.dirId, primary:true}, ...(r.dupes||[]).map(d=>({...d, primary:false}))]; }
+const dupSel = new Set();                      // "hash||path"
+function dupKey(hash,path){ return hash+"||"+path; }
+
+function dupeGroups(){ return CATALOG.filter(r=>(r.dupes&&r.dupes.length)); }
+function renderDupes(){
+  const box=$("#dupeList"), empty=$("#dupeEmpty");
+  const groups = dupeGroups();
+  if(!groups.length){ empty.style.display="block"; box.innerHTML=""; return; }
+  empty.style.display="none";
+  box.innerHTML = groups.map(r=>{
+    const locs = locsOf(r);
+    const rows = locs.map(l=>{
+      const k=dupKey(r.hash,l.path);
+      return `<label style="display:flex;gap:9px;align-items:flex-start;padding:6px 0;border-top:1px solid var(--line)">
+        <input type="checkbox" class="dupChk" data-k="${escapeHtml(k)}" ${dupSel.has(k)?"checked":""}>
+        <span style="flex:1">
+          <span class="path" style="font-size:.8rem">${escapeHtml(l.path)}</span>
+          ${l.primary?`<span class="cat" style="margin-left:6px">behalten (Referenz)</span>`:""}
+        </span></label>`;
+    }).join("");
+    return `<div class="card">
+      <div class="h"><div class="fname">${catIcon(r.category)} ${escapeHtml(r.name)}
+        <span style="color:var(--mut);font-weight:400;font-size:.82rem">· ${locs.length}× vorhanden</span></div></div>
+      ${rows}</div>`;
+  }).join("");
+}
+async function removeLocations(matchFn){
+  const toDelete=[];
+  for(const r of CATALOG){
+    const locs = locsOf(r);
+    const keep = locs.filter(l=>!matchFn(r,l));
+    if(keep.length===locs.length) continue;
+    if(!keep.length){ toDelete.push(r.hash); continue; }
+    r.path=keep[0].path; r.dirId=keep[0].dirId; r.dupes=keep.slice(1).map(({path,dirId,size,date})=>({path,dirId,size,date}));
+    try{ await idbPut("catalog", r); }catch{}
+  }
+  if(toDelete.length){
+    CATALOG = CATALOG.filter(r=>!toDelete.includes(r.hash));
+    for(const h of toDelete){ HASHSET.delete(h); SESSION_FILES.delete(h); try{ await idbDelete("catalog",h); }catch{} }
+  }
+}
+async function removeDupSelection(){
+  if(!dupSel.size){ toast("Nichts ausgewählt."); return; }
+  const n=dupSel.size;
+  await removeLocations((r,l)=>dupSel.has(dupKey(r.hash,l.path)));
+  dupSel.clear();
+  rebuildIndex(); refreshAll();
+  toast(`${n} Katalog-Einträge entfernt. Keine Datei gelöscht.`);
+}
+function selectExtraDupes(){ // je Gruppe alle außer der ersten Stelle ankreuzen
+  dupSel.clear();
+  for(const r of dupeGroups()){ const locs=locsOf(r); for(let i=1;i<locs.length;i++) dupSel.add(dupKey(r.hash,locs[i].path)); }
+  renderDupes();
+}
+
+function renderDirs(){
+  const box=$("#dirList");
+  if(!DIR_HANDLES.size){ box.innerHTML=`<p class="mut" style="color:var(--mut2);font-size:.82rem">Kein Ordner verbunden (oder nur „Dateien wählen“ genutzt).</p>`; return; }
+  let html="";
+  for(const [id,h] of DIR_HANDLES){
+    let count=0; for(const r of CATALOG){ for(const l of locsOf(r)) if(l.dirId===id) count++; }
+    html += `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line)">
+      <span style="flex:1">📁 <b>${escapeHtml(h.name||id)}</b> <span style="color:var(--mut);font-size:.8rem">· ${count} Einträge</span></span>
+      <button class="dirRemove" data-id="${escapeHtml(id)}" style="padding:7px 12px;font-size:.82rem;border-color:#5b2731;color:var(--bad)">Entfernen</button></div>`;
+  }
+  box.innerHTML=html;
+}
+async function removeDir(id){
+  if(!confirm("Ordner aus der App entfernen? Seine Katalog-Einträge werden entfernt — deine Dateien bleiben unberührt.")) return;
+  await removeLocations((r,l)=>l.dirId===id);
+  DIR_HANDLES.delete(id); try{ await idbDelete("dirs", id); }catch{}
+  rebuildIndex(); refreshAll();
+  toast("Ordner getrennt. Deine Dateien sind unberührt.");
+}
+
+/* ---------- Mikrofon / Sprachsuche (Browser Web-Speech, fail-soft) ---------- */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recog=null, listening=false;
+function toggleMic(){
+  if(!SR){ toast("Dein Browser kann keine Sprach-Eingabe. Tippen geht immer."); return; }
+  if(listening){ try{ recog.stop(); }catch{} return; }
+  recog = new SR(); recog.lang="de-DE"; recog.interimResults=true; recog.maxAlternatives=1;
+  const mic=$("#mic");
+  recog.onstart=()=>{ listening=true; mic.textContent="🔴"; mic.title="Zuhören… (zum Stoppen tippen)"; };
+  recog.onerror=()=>{ toast("Mikrofon nicht verfügbar oder abgelehnt."); };
+  recog.onend=()=>{ listening=false; mic.textContent="🎤"; mic.title="Per Sprache suchen"; renderResults($("#q").value); };
+  recog.onresult=e=>{
+    let txt=""; for(let i=0;i<e.results.length;i++) txt+=e.results[i][0].transcript;
+    $("#q").value=txt.trim(); renderResults($("#q").value);
+  };
+  try{ recog.start(); }catch{ toast("Mikrofon konnte nicht starten."); }
+}
+
+/* ============================================================================
+   7) OPTIONALE EU-KI (BYOK) — Mistral / Google Vision OCR, strikt opt-in
+   ========================================================================== */
+const AI = { provider:"", key:"", euOnly:true };
+const EU_PROVIDERS = new Set(["mistral","google"]); // beide EU-Endpunkte
 function loadAI(){
   const p=localStorage.getItem("cb_ai_provider")||"";
   const k=localStorage.getItem("cb_ai_key")||"";
+  const eu=localStorage.getItem("cb_ai_euonly");
+  AI.euOnly = eu===null ? true : eu==="1"; $("#euOnly").checked = AI.euOnly;
   if(p){ AI.provider=p; $("#aiProvider").value=p; }
   if(k){ AI.key=k; $("#aiKey").value=k; $("#aiPersist").checked=true; }
 }
 function saveAI(){
-  AI.provider=$("#aiProvider").value; AI.key=$("#aiKey").value.trim();
+  AI.provider=$("#aiProvider").value; AI.key=$("#aiKey").value.trim(); AI.euOnly=$("#euOnly").checked;
+  // Datenhoheit erzwingen: bei „nur EU“ nur EU-Anbieter zulassen
+  if(AI.euOnly && AI.provider && !EU_PROVIDERS.has(AI.provider)){ AI.provider=""; $("#aiProvider").value=""; toast("Nur-EU aktiv: Nicht-EU-Anbieter abgewählt."); }
+  localStorage.setItem("cb_ai_euonly", AI.euOnly?"1":"0");
   if($("#aiPersist").checked){ localStorage.setItem("cb_ai_provider",AI.provider); localStorage.setItem("cb_ai_key",AI.key); }
   else { localStorage.removeItem("cb_ai_provider"); localStorage.removeItem("cb_ai_key"); }
 }
@@ -916,6 +1059,18 @@ async function mistralOcr(blob){
   const j = await res.json();
   return (j.pages||[]).map(p=>p.markdown||p.text||"").join("\n").trim();
 }
+async function googleVisionEU(blob){
+  const dataUrl = await blobToDataURL(blob);
+  const b64 = String(dataUrl).split(",")[1];
+  const res = await fetch("https://eu-vision.googleapis.com/v1/images:annotate?key="+encodeURIComponent(AI.key), {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({ requests:[{ image:{content:b64}, features:[{type:"DOCUMENT_TEXT_DETECTION"}] }] })
+  });
+  if(!res.ok) throw new Error("Vision "+res.status);
+  const j = await res.json();
+  const r0 = (j.responses||[])[0]||{};
+  return ((r0.fullTextAnnotation&&r0.fullTextAnnotation.text) || "").trim();
+}
 function blobToDataURL(blob){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(blob); }); }
 
 /* ============================================================================
@@ -925,8 +1080,12 @@ function setToggle(){ $$("#mode button").forEach(b=>b.classList.toggle("on", b.d
 function refreshAll(){
   $("#tabCount").textContent = CATALOG.length?`· ${CATALOG.length}`:"";
   $("#corpusInfo").textContent = CATALOG.length?`Katalog: ${CATALOG.length} Dateien`:"";
+  const nd = dupeGroups().length;
+  $("#dupCount").textContent = nd?`· ${nd}`:"";
   renderResults($("#q").value);
   renderGroups();
+  renderDupes();
+  renderDirs();
   renderStats();
 }
 function renderStats(){
@@ -944,6 +1103,14 @@ $$(".tab").forEach(t=>t.addEventListener("click",()=>{
 // Suche
 $("#q").addEventListener("input", ()=>renderResults($("#q").value));
 $$("#mode button").forEach(b=>b.addEventListener("click",()=>{ MODE=b.dataset.m; setToggle(); renderResults($("#q").value); }));
+$("#mic").addEventListener("click", toggleMic);
+// Doppelte + Ordner-Verwaltung
+$("#dupRemove").addEventListener("click", removeDupSelection);
+$("#dupSelectExtra").addEventListener("click", selectExtraDupes);
+$("#dupClearSel").addEventListener("click", ()=>{ dupSel.clear(); renderDupes(); });
+document.addEventListener("change", e=>{
+  const c=e.target.closest(".dupChk"); if(c){ const k=c.dataset.k; c.checked?dupSel.add(k):dupSel.delete(k); }
+});
 // Einwurf
 $("#pickDir").addEventListener("click", pickDirectory);
 $("#pickFiles").addEventListener("click", pickFiles);
@@ -953,11 +1120,13 @@ document.addEventListener("click", e=>{
   const ob=e.target.closest(".openBtn"); if(ob){ openFile(ob.dataset.hash); return; }
   const sb=e.target.closest(".sumBtn"); if(sb){ const r=CATALOG.find(x=>x.hash===sb.dataset.hash); if(r) toast(r.summary||"—", 4500); return; }
   const gp=e.target.closest(".grp"); if(gp){ showGroup(gp.dataset.cat); return; }
+  const dr=e.target.closest(".dirRemove"); if(dr){ removeDir(dr.dataset.id); return; }
 });
 // EU-KI
 $("#aiProvider").addEventListener("change", saveAI);
 $("#aiKey").addEventListener("change", saveAI);
 $("#aiPersist").addEventListener("change", saveAI);
+$("#euOnly").addEventListener("change", saveAI);
 // Katalog-Verwaltung
 $("#btnPersist").addEventListener("click", async ()=>{
   if(navigator.storage && navigator.storage.persist){ const ok=await navigator.storage.persist(); toast(ok?"Speicher ist jetzt dauerhaft.":"Browser hat es (noch) nicht gewährt."); renderPersist(); }
@@ -994,7 +1163,7 @@ function renderOcrFlag(){
 async function boot(){
   db = await openDB();
   CATALOG = await idbGetAll("catalog");
-  for(const r of CATALOG){ HASHSET.add(r.hash); if(!r.tf) r.tf=termFreq(tokens(r.name+" "+(r.snippet||""))); }
+  for(const r of CATALOG){ HASHSET.add(r.hash); r.dupes=r.dupes||[]; if(!r.tf) r.tf=termFreq(tokens(r.name+" "+(r.snippet||""))); }
   const dirs = await idbGetAll("dirs");
   for(const d of dirs){ if(d.handle) DIR_HANDLES.set(d.id, d.handle); }
   rebuildIndex();
