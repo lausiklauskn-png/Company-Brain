@@ -48,6 +48,16 @@ Die erste **Probeversion** ist gebaut: eine schlanke, offline-fähige **Browser-
 - **Optionale EU-KI (BYOK):** standardmäßig **aus**. Bild-Texterkennung wahlweise über
   **Mistral OCR (EU)** oder **Google Cloud Vision (EU-Endpunkt)** — nur wenn du bewusst
   einen eigenen Schlüssel hinterlegst; „Nur-EU"-Schalter erzwingt Datenhoheit.
+- **Filter & Sortierung:** nach Kategorie, Typ, Zeitraum, Tag filtern; nach Relevanz/Datum/
+  Größe/Name sortieren. Leere Suche + Filter = **Stöber-Modus**.
+- **Tags & gespeicherte Suchen:** eigene Schlagworte an Dateien; häufige Suchen als Knopf.
+- **Mehrere Rechner:** Katalog **vollständig sichern** und auf einem anderen Gerät
+  **zusammenführen** → eine durchsuchbare Gesamtsicht. Es reisen nur Steckbriefe, keine Dateien.
+- **🧠 KI pro Datei (opt-in):** einen Beleg/ein PDF per **Mistral (EU)** zusammenfassen oder
+  gezielt befragen — Datei-Text geht nur bei Klick an die EU-KI.
+- **🔀 Neu ordnen (zerstörungsfrei):** legt **Kopien** nach Schema (Kategorie/Jahr/Typ) in einen
+  **neuen, leeren Zielordner** (File System Access). Originale bleiben; Rückgängig = Ordner löschen.
+  Ein Manifest dokumentiert jede Kopie.
 
 ### Ausprobieren
 
@@ -59,9 +69,11 @@ Seite installieren.
 
 `npm test` fährt die **echte App** in Chromium hoch, signiert echte Dateien und prüft:
 Bedeutung schlägt Name, PDF-/DOCX-Text wird gefunden, Dedupe/Doppelte-Finder greift,
-Suche < 1 s. Zuletzt grün: **8 + 3 + 10 Prüfungen bestanden (2026-07-15)**. Klaus'
-Browser-Sichttest am Tablet steht noch aus — bis dahin ehrlich: *„Logik bewiesen, Sicht
-am Gerät ungeprüft.“*
+Filter/Tags/gespeicherte Suchen, Mehr-Rechner-Merge, Suche < 1 s. Zuletzt grün:
+**8 + 3 + 10 + 14 Prüfungen bestanden (2026-07-15)**. Klaus' Browser-Sichttest am Tablet
+steht noch aus — bis dahin ehrlich: *„Logik bewiesen, Sicht am Gerät ungeprüft.“*
+(Nur per Browser prüfbar, nicht headless: die **Kopie-in-neuen-Ordner**-Aktion und die
+**KI-pro-Datei** — beide fail-soft und UI-seitig getestet.)
 
 ## Drei Vertrauens-Säulen
 
