@@ -27,6 +27,12 @@ Die erste **Probeversion** ist gebaut: eine schlanke, offline-fähige **Browser-
 
 ### Was sie kann (alles offline, ohne Cloud-Pflicht)
 
+- **Echtes Bedeutungs-Modell (neu):** ein neuronales, mehrsprachiges Modell
+  (`Xenova/multilingual-e5-small`, Modul 03 aus dem SBKIM-Baukasten, byte-1:1) versteht
+  **Synonyme, Umschreibung und Sprachen** — „vehicle“ findet den „Wagen“, „rental contract“
+  den „Mietvertrag“. **Selbst gehostet** (Gewichte im eigenen Origin, per GitHub-Action geholt);
+  solange das Modell lädt/fehlt, greift der **Stichwort-Rückfall**. Das ist der Unterschied zu
+  Metadaten-/Spalten-Sortierung: *Verstehen statt Stichwort.*
 - **Zerstörungsfrei:** „Ordner verbinden“ (File System Access API) merkt sich nur einen
   **Zeiger** auf den Ordner — **kein Kopieren, kein Verschieben, kein Löschen**. Fallback:
   „Dateien wählen“ (nur diese Sitzung). Öffnen liest das Original über den Zeiger neu.
@@ -70,10 +76,17 @@ Seite installieren.
 `npm test` fährt die **echte App** in Chromium hoch, signiert echte Dateien und prüft:
 Bedeutung schlägt Name, PDF-/DOCX-Text wird gefunden, Dedupe/Doppelte-Finder greift,
 Filter/Tags/gespeicherte Suchen, Mehr-Rechner-Merge, Suche < 1 s. Zuletzt grün:
-**8 + 3 + 10 + 14 Prüfungen bestanden (2026-07-15)**. Klaus' Browser-Sichttest am Tablet
-steht noch aus — bis dahin ehrlich: *„Logik bewiesen, Sicht am Gerät ungeprüft.“*
-(Nur per Browser prüfbar, nicht headless: die **Kopie-in-neuen-Ordner**-Aktion und die
-**KI-pro-Datei** — beide fail-soft und UI-seitig getestet.)
+**Drift-Guard + 8 + 3 + 10 + 14 + 7 Prüfungen bestanden (2026-07-15)**.
+
+**Das Bedeutungs-Modell selbst hosten:** GitHub → **Actions → „Embedding-Modell ins Repo
+holen" → Run workflow** — das holt die Gewichte (~30 MB) und committet sie unter
+`models/…`. Danach lädt die App das Modell aus dem eigenen Origin.
+
+**Ehrlich, nur per Browser/CI prüfbar (nicht headless):** das **echte e5-Modell**
+(transformers.js/HuggingFace sind in der Bau-Sandbox gesperrt → die Adapter-/Rang-Logik
+ist mit einem eingespritzten Stub bewiesen, die echte Modell-Qualität zeigt sich im Browser
+bzw. nach dem Action-Lauf), die **Kopie-in-neuen-Ordner**-Aktion und die **KI-pro-Datei**.
+Alle fail-soft. Klaus' Browser-Sichttest am Tablet steht aus.
 
 ## Drei Vertrauens-Säulen
 

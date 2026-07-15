@@ -328,6 +328,7 @@
       <h3>Was hier offline läuft</h3>
       <p><span class="flag ok">immer offline</span> Fingerabdruck (SHA-256), Text aus Text-/PDF-/Office-Dateien, Bedeutungs-Vektor, Vorfilter &amp; Ranking, Katalog — alles in diesem Browser.</p>
       <p><span id="ocrFlag" class="flag opt">prüfe…</span> Bild-Texterkennung (OCR) über die Browser-Texterkennung, wenn dein Gerät sie mitbringt.</p>
+      <p><span id="embFlag" class="flag opt">prüfe…</span> <b>Echtes Bedeutungs-Modell</b> (neuronales Modell, mehrsprachig) — versteht Synonyme &amp; Umschreibung, nicht nur Stichworte. <span id="embInfo" style="color:var(--mut2)"></span></p>
       <p><span class="flag opt">optional · BYOK</span> Stärkere Cloud-KI (EU) für OCR/Bedeutung — nur wenn du unten bewusst einen Schlüssel hinterlegst. <b>Standard: aus.</b></p>
     </div>
 
@@ -387,6 +388,9 @@
 <div class="modal-bg" id="modalBg"><div class="modal" id="modalBox"></div></div>
 <div class="toast" id="toast"></div>
 
+<!-- Echtes Bedeutungs-Modell (Modul 03, byte-1:1 aus dem SBKIM-Baukasten). Lädt die
+     transformers.js-Bibliothek + das selbst-gehostete Modell erst bei Bedarf; fail-soft. -->
+<script src="modules/03_embedding.js"></script>
 <script>
 "use strict";
 /* ============================================================================
@@ -502,6 +506,57 @@ function buildVector(toks){
   return Array.from(v);
 }
 function cosine(a,b){ let s=0; for(let i=0;i<VEC_DIM;i++) s+=a[i]*b[i]; return s; }
+function cosineE(a,b){ let s=0; const n=Math.min(a.length,b.length); for(let i=0;i<n;i++) s+=a[i]*b[i]; return s; } // 384-dim e5-Vektoren
+
+/* ---------- Echtes Bedeutungs-Modell (Adapter um Modul 03) ----------
+   evec = neuronaler 384-dim-Vektor pro Datei. Fehlt Modell/Netz, bleibt alles
+   auf dem lexikalischen Vektor + BM25 (Rückfall). Nichts blockiert. */
+const EMBED = { ready:false, tried:false, source:"", backfilling:false };
+// Test-Hook: eine Testseite darf window.__CB_EMBED_STUB__ setzen (deterministischer Ersatz).
+function embedder(){ return window.__CB_EMBED_STUB__ || (EMBED.ready ? window.SbkimEmbedding : null); }
+async function initEmbedding(){
+  if(window.__CB_EMBED_STUB__){ EMBED.ready=true; EMBED.source="stub"; renderEmbFlag(); embedBackfill(); return; }
+  if(!window.SbkimEmbedding){ EMBED.tried=true; renderEmbFlag(); return; }
+  EMBED.tried=true; renderEmbFlag();
+  try{
+    await window.SbkimEmbedding.init();
+    EMBED.ready = !!window.SbkimEmbedding.isReady();
+    try{ EMBED.source = window.SbkimEmbedding.getModelSource ? String(window.SbkimEmbedding.getModelSource()||"") : ""; }catch{}
+    renderEmbFlag();
+    if(EMBED.ready) embedBackfill();
+  }catch(e){ EMBED.ready=false; renderEmbFlag(); } // fail-soft: Rückfall auf Stichwort
+}
+function passageText(r){ return ((r.name||"")+". "+(r.snippet||"")).slice(0,1600); }
+async function embedBackfill(){
+  const emb = embedder(); if(!emb || EMBED.backfilling) return;
+  const todo = CATALOG.filter(r=>!r.evec && (r.snippet||r.name));
+  if(!todo.length) return;
+  EMBED.backfilling=true; renderEmbFlag();
+  try{
+    for(let i=0;i<todo.length;i+=16){
+      const batch = todo.slice(i,i+16);
+      let vecs;
+      try{ vecs = await emb.embedPassageBatch(batch.map(passageText)); }
+      catch{ vecs = []; for(const r of batch){ try{ vecs.push(await emb.embedPassage(passageText(r))); }catch{ vecs.push(null); } } }
+      for(let k=0;k<batch.length;k++){ const v=vecs[k]; if(v){ batch[k].evec = Array.from(v); try{ await idbPut("catalog", batch[k]); }catch{} } }
+      renderResults($("#q").value);
+    }
+  }catch{}
+  EMBED.backfilling=false; renderEmbFlag();
+}
+const _qeCache = new Map();
+async function embedQueryCached(q){
+  const key=q.trim().toLowerCase(); if(_qeCache.has(key)) return _qeCache.get(key);
+  const emb=embedder(); if(!emb) return null;
+  try{ const v=await emb.embedQuery(q); const a=Array.from(v); if(_qeCache.size>50) _qeCache.clear(); _qeCache.set(key,a); return a; }catch{ return null; }
+}
+function renderEmbFlag(){
+  const f=$("#embFlag"), info=$("#embInfo"); if(!f) return;
+  if(EMBED.ready){ f.className="flag ok"; f.textContent = EMBED.source==="local" ? "aktiv · selbst-gehostet" : (EMBED.source==="stub"?"aktiv · Test":"aktiv");
+    info && (info.textContent = EMBED.backfilling ? " — bettet Bestand ein…" : " — Suche versteht Bedeutung."); }
+  else if(EMBED.tried){ f.className="flag opt"; f.textContent="lädt / Rückfall aktiv"; info && (info.textContent=" — bis dahin Stichwort-Bedeutung."); }
+  else { f.className="flag opt"; f.textContent="prüfe…"; }
+}
 
 /* ============================================================================
    2) INHALT AUS DATEIEN HOLEN — Text, PDF, Office(zip), Bild(OCR)
@@ -763,6 +818,7 @@ async function signBatch(items){ // items: [{file, path, dirId}]
   }
   rebuildIndex();
   refreshAll();
+  embedBackfill();   // neue Dateien mit echtem Bedeutungs-Vektor nachziehen (fail-soft)
   signing=false;
   setTimeout(()=>prog.classList.remove("on"), 900);
   toast(cancelReq ? `Abgebrochen · ${added} neu signiert`
@@ -858,7 +914,7 @@ function bm25(r, qterms){
   }
   return {score:s, hits};
 }
-function search(query){
+function search(query, qe){
   const raw = tokens(query);
   if(MODE==="name"){
     const q = fold(query.trim());
@@ -877,15 +933,15 @@ function search(query){
   for(const r of CATALOG){
     const {score:lex, hits} = bm25(r, qexp);
     const cos = cosine(qvec, r.vector);
+    const eco = (qe && r.evec) ? cosineE(qe, r.evec) : 0;   // echte Bedeutung (Modell)
     const nameHit = raw.some(t=>fold(r.name).includes(t));
-    const total = lex + cos*3 + (nameHit?0.6:0);
-    if(total>0.02){
+    const total = lex + cos*3 + eco*7 + (nameHit?0.6:0);    // Modell dominiert, wenn vorhanden
+    if(total>0.02 || eco>0.72){
       // wo trafen die Begriffe? (Begründung)
       const inName=[], inContent=[];
-      const snipFold = fold(r.snippet);
       for(const h of hits){ (fold(r.name).includes(h)?inName:inContent).push(h); }
-      scored.push({r, score:total, cos, lex, kind:"mean",
-        why:{terms:hits, inName, inContent, category:r.category, nameHit,
+      scored.push({r, score:total, cos, eco, lex, kind:"mean",
+        why:{terms:hits, inName, inContent, category:r.category, nameHit, eco,
              viaOCR: /OCR|Texterkennung/.test(r.via) && inContent.length>0}});
     }
   }
@@ -904,7 +960,7 @@ function highlight(text, terms){
 }
 function escapeHtml(s){ return (s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
 
-function renderResults(query){
+async function renderResults(query){
   const ul=$("#results"), empty=$("#searchEmpty"), info=$("#searchInfo");
   if(!CATALOG.length){ empty.style.display="block"; ul.innerHTML=""; return; }
   empty.style.display="none";
@@ -916,8 +972,15 @@ function renderResults(query){
     return;
   }
   const t0=performance.now();
+  // echte Bedeutung: Query-Embedding holen (async), mit Sequenz-Schutz gegen Tipp-Races
+  let qe=null;
+  if(hasQ && MODE==="mean" && embedder()){
+    const myseq = (renderResults._seq = (renderResults._seq||0) + 1);
+    qe = await embedQueryCached(query);
+    if(myseq !== renderResults._seq) return; // eine neuere Eingabe hat übernommen
+  }
   let results;
-  if(hasQ) results = search(query);
+  if(hasQ) results = search(query, qe);
   else { // Stöber-Modus: alles, was die Filter durchlässt
     const s = FILTER.sort==="rel" ? "new" : FILTER.sort;
     results = CATALOG.map(r=>({r, score:0, kind:"browse", cos:0, why:{terms:[]}}));
@@ -965,9 +1028,14 @@ function renderWhy(hit){
   const w=hit.why; const bits=[];
   if(w.inName && w.inName.length) bits.push(`im <b>Namen</b>: ${w.inName.map(chip).join("")}`);
   if(w.inContent && w.inContent.length) bits.push(`im <b>Inhalt</b>${w.viaOCR?" (aus Bild-Text)":""}: ${w.inContent.map(chip).join("")}`);
-  const cosTxt = hit.cos>0.12 ? ` · sinnverwandt (${(hit.cos*100|0)}%)` : "";
-  if(!bits.length && hit.cos>0.1) return `<div class="why">semantisch ähnlich${cosTxt}, auch ohne exaktes Wort.</div>`;
-  return `<div class="why">Gefunden, weil ${bits.join("; ")}${cosTxt}.</div>`;
+  const eco = hit.eco||0;
+  const modelTxt = eco>0.72 ? ` · <b>Bedeutung ${(eco*100|0)}%</b> (Modell)` : (eco>0.5 ? ` · Bedeutung ${(eco*100|0)}% (Modell)` : "");
+  const cosTxt = (!modelTxt && hit.cos>0.12) ? ` · sinnverwandt (${(hit.cos*100|0)}%)` : "";
+  if(!bits.length){
+    if(eco>0.5) return `<div class="why">Vom <b>Bedeutungs-Modell</b> gefunden${modelTxt} — auch ohne gemeinsames Wort.</div>`;
+    if(hit.cos>0.1) return `<div class="why">semantisch ähnlich${cosTxt}, auch ohne exaktes Wort.</div>`;
+  }
+  return `<div class="why">Gefunden, weil ${bits.join("; ")||"bedeutungsähnlich"}${modelTxt}${cosTxt}.</div>`;
 }
 function chip(t){ return `<span class="chip">${escapeHtml(t)}</span>`; }
 
@@ -1320,7 +1388,7 @@ function downloadBlob(blob, name){
 }
 function fullExport(){
   const cat=CATALOG.map(r=>({hash:r.hash,name:r.name,path:r.path,type:r.type,ext:r.ext,date:r.date,size:r.size,
-    snippet:r.snippet,via:r.via,vector:r.vector,tf:r.tf,summary:r.summary,category:r.category,tags:r.tags||[],
+    snippet:r.snippet,via:r.via,vector:r.vector,evec:r.evec||null,tf:r.tf,summary:r.summary,category:r.category,tags:r.tags||[],
     dupes:r.dupes||[]}));
   const node = (localStorage.getItem("cb_node")|| ("Rechner-"+(location.hostname||"lokal")));
   const blob=new Blob([JSON.stringify({app:"company-brain",v:2,node,count:cat.length,catalog:cat},null,2)],{type:"application/json"});
@@ -1532,9 +1600,10 @@ async function boot(){
   for(const d of dirs){ if(d.handle) DIR_HANDLES.set(d.id, d.handle); }
   rebuildIndex();
   loadAI();
-  renderFsHint(); renderOcrFlag(); renderPersist();
+  renderFsHint(); renderOcrFlag(); renderPersist(); renderEmbFlag();
   refreshAll();
   setToggle();
+  initEmbedding();  // echtes Bedeutungs-Modell laden (nicht blockierend, fail-soft)
   // Service Worker (offline)
   if("serviceWorker" in navigator){ try{ await navigator.serviceWorker.register("sw.js"); }catch{} }
 }
