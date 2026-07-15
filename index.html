@@ -377,6 +377,22 @@
       </div>
       <input id="importInput" type="file" accept="application/json,.json" style="display:none">
     </div>
+
+    <div class="note">
+      <h3>🌐 Mit Kollegen verbinden (live, server-los) — optional</h3>
+      <p><b>Standard: aus.</b> Erst wenn du hier verbindest, treffen sich mehrere Rechner in einem
+      gemeinsamen Raum über ein „dummes", server-loses Relais und fragen sich <b>gegenseitig die
+      Kataloge live ab</b>. Es reisen <b>nur Fragen und Antworten</b> — <b>keine Dateien</b>. Jederzeit
+      abschaltbar (Aufräumen). Der antwortende Rechner muss den Tab vorn/wach haben.</p>
+      <div class="btnrow" style="justify-content:flex-start">
+        <button id="cbnetConnect" class="primary">Verbinden &amp; anmelden</button>
+        <button id="cbnetDiscover" class="ghost">👥 Wer ist im Raum?</button>
+        <button id="cbnetAnswer" class="ghost">Antworten erlauben</button>
+        <button id="cbnetRepair" class="ghost">🧹 Aufräumen &amp; neu anmelden</button>
+      </div>
+      <pre id="sbkim-rdv-out" class="out" style="margin-top:10px;white-space:pre-wrap;min-height:1.4em"></pre>
+      <div id="cbnet-room"></div>
+    </div>
   </section>
 
   <footer>
@@ -388,9 +404,17 @@
 <div class="modal-bg" id="modalBg"><div class="modal" id="modalBox"></div></div>
 <div class="toast" id="toast"></div>
 
-<!-- Echtes Bedeutungs-Modell (Modul 03, byte-1:1 aus dem SBKIM-Baukasten). Lädt die
-     transformers.js-Bibliothek + das selbst-gehostete Modell erst bei Bedarf; fail-soft. -->
+<!-- SBKIM-Baukasten (byte-1:1): Bedeutungs-Modell (03) + Match (04) + Identität/Relais
+     (01/02/05/05b/23). Alles lädt fail-soft; ohne diese Skripte läuft die App voll weiter,
+     nur „Mit Kollegen verbinden" ist dann aus. Reihenfolge: Storage → Spore → Modell →
+     Match → Anastomose → Relay → Rendezvous → App-Adapter. -->
+<script src="modules/01_storage.js"></script>
+<script src="modules/02_spore.js"></script>
 <script src="modules/03_embedding.js"></script>
+<script src="modules/04_match.js"></script>
+<script src="modules/05_anastomose.js"></script>
+<script type="module" src="modules/05b_nostr_relay.js"></script>
+<script src="modules/23_rendezvous.js"></script>
 <script>
 "use strict";
 /* ============================================================================
@@ -527,6 +551,9 @@ async function initEmbedding(){
   }catch(e){ EMBED.ready=false; renderEmbFlag(); } // fail-soft: Rückfall auf Stichwort
 }
 function passageText(r){ return ((r.name||"")+". "+(r.snippet||"")).slice(0,1600); }
+// Korpus-Provider für „Mit Kollegen verbinden" (Modul 23 beantwortet damit Fragen).
+// Nur eigene Einträge (keine importierten Fremd-Rechner), nur Text — keine Datei.
+window.__CB_getCorpus = ()=> CATALOG.filter(r=>!r.origin).map(r=>({label:r.name, text:passageText(r), anchorId:r.hash, passageVec:r.evec||undefined}));
 async function embedBackfill(){
   const emb = embedder(); if(!emb || EMBED.backfilling) return;
   const todo = CATALOG.filter(r=>!r.evec && (r.snippet||r.name));
@@ -1609,5 +1636,7 @@ async function boot(){
 }
 boot();
 </script>
+<!-- App-Adapter für „Mit Kollegen verbinden" (nach der App, nutzt window.__CB_getCorpus). -->
+<script src="modules/rendezvous-init.js"></script>
 </body>
 </html>

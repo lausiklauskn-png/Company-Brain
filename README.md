@@ -59,6 +59,11 @@ Die erste **Probeversion** ist gebaut: eine schlanke, offline-fähige **Browser-
 - **Tags & gespeicherte Suchen:** eigene Schlagworte an Dateien; häufige Suchen als Knopf.
 - **Mehrere Rechner:** Katalog **vollständig sichern** und auf einem anderen Gerät
   **zusammenführen** → eine durchsuchbare Gesamtsicht. Es reisen nur Steckbriefe, keine Dateien.
+- **🌐 Mit Kollegen verbinden (live, server-los) — optional, Standard aus:** über ein „dummes"
+  Relais treffen sich mehrere Rechner in einem gemeinsamen Raum und fragen sich **gegenseitig
+  die Kataloge live ab** (Modul 23 aus dem SBKIM-Baukasten, byte-1:1). Nur **Fragen und Antworten**
+  reisen, **keine Dateien**. Eigene, stabile Identität pro Gerät (`dbSuffix=companybrain`);
+  „🧹 Aufräumen & neu anmelden" heilt Alt-Zustände. Der antwortende Tab muss vorn/wach sein.
 - **🧠 KI pro Datei (opt-in):** einen Beleg/ein PDF per **Mistral (EU)** zusammenfassen oder
   gezielt befragen — Datei-Text geht nur bei Klick an die EU-KI.
 - **🔀 Neu ordnen (zerstörungsfrei):** legt **Kopien** nach Schema (Kategorie/Jahr/Typ) in einen
@@ -87,6 +92,12 @@ holen" → Run workflow** — das holt die Gewichte (~30 MB) und committet sie u
 ist mit einem eingespritzten Stub bewiesen, die echte Modell-Qualität zeigt sich im Browser
 bzw. nach dem Action-Lauf), die **Kopie-in-neuen-Ordner**-Aktion und die **KI-pro-Datei**.
 Alle fail-soft. Klaus' Browser-Sichttest am Tablet steht aus.
+
+**„Mit Kollegen verbinden" (Modul 23):** das Relais ist `wss://` und in der Bau-Sandbox
+**nicht erreichbar** (wie im ganzen SBKIM-Ökosystem) → headless ist nur die **fail-soft-
+Verdrahtung** bewiesen (`e2e-relay.mjs`: Stack lädt, eigene Identität `companybrain`, Knöpfe,
+sauberes Degradieren offline, keine Fehler). Die **echte Live-Suche zwischen zwei Rechnern**
+muss Klaus im Browser auf **zwei Geräten** bestätigen — bis dahin „ungeprüft".
 
 ## Drei Vertrauens-Säulen
 
