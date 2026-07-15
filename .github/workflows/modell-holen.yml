@@ -1,10 +1,14 @@
 name: Embedding-Modell ins Repo holen
 
 # Holt das Modell "Xenova/multilingual-e5-small" von HuggingFace und legt es
-# unter models/… ins Repo, damit Family-Projekt es offline vom eigenen Server
-# lädt. Läuft NUR auf Knopfdruck (Actions -> diese Workflow -> "Run workflow").
-# Der Lauf committet die Modell-Dateien in genau den Branch, auf dem er
-# gestartet wurde.
+# unter models/… ins Repo. Läuft NUR auf Knopfdruck.
+#
+# ⚠️ ACHTUNG (2026-07-15): Auf GitHub Pages SCHLÄGT der Push FEHL — die Datei
+# onnx/model_quantized.onnx ist ~113 MB und sprengt GitHubs 100-MB-Grenze pro Datei
+# (GH001). Für GitHub-Pages-Selbst-Host bräuchte es Git LFS.
+# GEWÄHLTER WEG (Klaus 2026-07-15): die App auf dem eigenen Server family-projekt.de
+# betreiben und das Modell dort mit tools/fetch-model.sh danebenlegen — kein 100-MB-
+# Limit, kein CORS. Siehe DEPLOY.md. Dieser Knopf bleibt nur für den LFS-Fall.
 
 on:
   workflow_dispatch:
