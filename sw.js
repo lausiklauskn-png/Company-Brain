@@ -1,13 +1,14 @@
 /* Company Brain — Service Worker (offline App-Schale, cache-first).
    Fremde Origins werden durchgereicht (z. B. bewusst freigeschaltete EU-KI). */
-const CACHE = "company-brain-v0-1";
+const CACHE = "company-brain-v0-2";
 const SHELL = [
   "./",
   "./index.html",
   "./app-manifest.json",
   "./icon-192.png",
   "./icon-512.png",
-  "./impressum.html"
+  "./impressum.html",
+  "./modules/03_embedding.js"
 ];
 
 self.addEventListener("install", e => {
