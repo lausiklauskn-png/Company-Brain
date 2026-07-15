@@ -1,0 +1,15 @@
+{
+  "name": "company-brain",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Company Brain — Probeversion: offline PWA, die Datenchaos nach Bedeutung durchsuchbar macht.",
+  "scripts": {
+    "icons": "node tools/make-icons.mjs",
+    "test": "node tools/e2e-test.mjs && node tools/e2e-compressed.mjs",
+    "serve": "python3 -m http.server 8000"
+  },
+  "devDependencies": {
+    "playwright-core": "^1"
+  }
+}

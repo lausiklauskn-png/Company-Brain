@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<!-- Company Brain — Probeversion · v0.1 · 2026 · offline PWA, single-file, no external deps -->
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Company Brain — nach Bedeutung suchen</title>
+<meta name="description" content="Offline-Kasten, der dein Datenchaos nach Bedeutung durchsuchbar macht — ohne Originale zu bewegen.">
+<meta name="theme-color" content="#12152b">
+<link rel="manifest" href="app-manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Company Brain">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root{
+    --bg:#0c0f21; --bg2:#12152b; --card:#171a35; --card2:#1e2245;
+    --line:#2a2f57; --ink:#eef0ff; --mut:#9aa0cf; --mut2:#6f76a8;
+    --acc:#8b9cff; --acc2:#4f7dff; --good:#54d6a0; --warn:#ffcf6b; --bad:#ff7a8a;
+    --gold:#e7c26a; --radius:16px;
+    --mono:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:var(--sans); color:var(--ink); background:var(--bg);
+    background-image:radial-gradient(1200px 600px at 15% -10%,#1b2050 0,transparent 60%),
+                     radial-gradient(900px 500px at 110% 10%,#241a49 0,transparent 55%);
+    line-height:1.5; -webkit-text-size-adjust:100%; min-height:100vh;
+  }
+  a{color:var(--acc)}
+  .wrap{max-width:1000px;margin:0 auto;padding:18px 16px 90px}
+  header.top{display:flex;align-items:center;gap:14px;padding:6px 2px 14px}
+  .logo{width:46px;height:46px;border-radius:13px;flex:0 0 auto;
+    background:linear-gradient(160deg,#1a1f3b,#3b2d6b);display:grid;place-items:center;
+    box-shadow:0 4px 18px rgba(0,0,0,.35),inset 0 0 0 1px #ffffff14}
+  .logo svg{width:28px;height:28px}
+  .brand h1{font-size:1.28rem;margin:0;letter-spacing:.2px}
+  .brand .sub{color:var(--mut);font-size:.82rem;margin-top:1px}
+  .pillars{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:6px 0 20px}
+  .pillar{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:12px 13px}
+  .pillar b{display:block;font-size:.86rem;margin-bottom:3px}
+  .pillar span{color:var(--mut);font-size:.78rem}
+  .pillar .ic{font-size:1.05rem;margin-right:6px}
+
+  .drop{border:2px dashed #3a4080;border-radius:20px;background:var(--card);
+    padding:26px 18px;text-align:center;transition:.15s;position:relative;overflow:hidden}
+  .drop.hot{border-color:var(--acc2);background:var(--card2);transform:translateY(-1px)}
+  .drop h2{margin:.1em 0 .3em;font-size:1.12rem}
+  .drop p{color:var(--mut);margin:.2em 0 1em;font-size:.9rem}
+  .btnrow{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+  button,.btn{font-family:inherit;font-size:.92rem;cursor:pointer;border-radius:12px;
+    border:1px solid var(--line);background:var(--card2);color:var(--ink);
+    padding:11px 16px;transition:.12s;display:inline-flex;align-items:center;gap:8px}
+  button:hover,.btn:hover{border-color:var(--acc);background:#232858}
+  button.primary{background:linear-gradient(160deg,#3f63ff,#5b46d6);border-color:#5b6bff;color:#fff;font-weight:600}
+  button.primary:hover{filter:brightness(1.08)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  button.ghost{background:transparent}
+  .hint{color:var(--mut2);font-size:.76rem;margin-top:12px}
+
+  /* progress */
+  .prog{margin-top:16px;display:none}
+  .prog.on{display:block}
+  .bar{height:12px;border-radius:8px;background:#0c0f24;overflow:hidden;border:1px solid var(--line)}
+  .bar > i{display:block;height:100%;width:0;background:linear-gradient(90deg,#4f7dff,#8b9cff);transition:width .18s}
+  .prog .line{display:flex;justify-content:space-between;gap:10px;font-size:.82rem;margin:8px 2px 0;color:var(--mut)}
+  .prog .cur{color:var(--ink);font-family:var(--mono);font-size:.78rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60%}
+
+  .tabs{display:flex;gap:6px;margin:24px 0 14px;flex-wrap:wrap}
+  .tab{padding:9px 15px;border-radius:11px;border:1px solid var(--line);background:var(--card);
+    color:var(--mut);cursor:pointer;font-size:.9rem}
+  .tab.on{background:var(--card2);color:var(--ink);border-color:var(--acc)}
+  .tab b{color:var(--acc);font-family:var(--mono)}
+  .panel{display:none} .panel.on{display:block}
+
+  /* search */
+  .searchbox{display:flex;gap:10px;flex-wrap:wrap;align-items:center;
+    background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px}
+  .searchbox input[type=search]{flex:1 1 260px;min-width:180px;background:#0c0f24;border:1px solid var(--line);
+    color:var(--ink);border-radius:11px;padding:12px 14px;font-size:1rem;font-family:inherit}
+  .searchbox input[type=search]:focus{outline:none;border-color:var(--acc)}
+  .toggle{display:flex;background:#0c0f24;border:1px solid var(--line);border-radius:11px;padding:3px}
+  .toggle button{border:none;background:transparent;color:var(--mut);padding:9px 13px;border-radius:9px;font-size:.85rem}
+  .toggle button.on{background:linear-gradient(160deg,#3f63ff,#5b46d6);color:#fff;font-weight:600}
+  .searchmeta{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;
+    margin:12px 2px 6px;color:var(--mut);font-size:.8rem}
+
+  .res{list-style:none;padding:0;margin:0;display:grid;gap:12px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px 15px}
+  .card .h{display:flex;align-items:flex-start;gap:10px}
+  .card .fname{font-weight:600;word-break:break-word;flex:1}
+  .card .path{color:var(--mut2);font-size:.74rem;font-family:var(--mono);word-break:break-all;margin-top:2px}
+  .score{flex:0 0 auto;font-family:var(--mono);font-size:.74rem;color:#0c0f24;background:var(--acc);
+    border-radius:8px;padding:3px 8px;font-weight:700}
+  .score.lo{background:var(--mut)} .score.mid{background:var(--warn)} .score.hi{background:var(--good)}
+  .cat{display:inline-block;font-size:.72rem;color:var(--acc);border:1px solid var(--line);
+    border-radius:20px;padding:2px 10px;margin-top:2px}
+  .why{margin:10px 0 0;font-size:.82rem;color:var(--mut)}
+  .why b{color:var(--ink)}
+  .why .chip{display:inline-block;background:#0c0f24;border:1px solid var(--line);border-radius:7px;
+    padding:1px 7px;margin:2px 4px 2px 0;font-family:var(--mono);font-size:.72rem;color:var(--acc)}
+  .snip{margin:9px 0 0;font-size:.82rem;color:var(--mut);background:#0c0f24;border-radius:9px;
+    padding:9px 11px;border:1px solid var(--line);max-height:5.6em;overflow:hidden}
+  .snip mark{background:#3f63ff55;color:#fff;border-radius:3px;padding:0 2px}
+  .cardbtns{display:flex;gap:8px;margin-top:11px;flex-wrap:wrap}
+  .cardbtns button{padding:8px 12px;font-size:.82rem}
+  .empty{text-align:center;color:var(--mut);padding:40px 10px}
+  .empty .big{font-size:2.4rem;opacity:.5}
+
+  /* groups */
+  .groups{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+  .grp{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:15px;cursor:pointer;transition:.12s}
+  .grp:hover{border-color:var(--acc);transform:translateY(-2px)}
+  .grp .ic{font-size:1.7rem}
+  .grp .n{font-weight:600;margin-top:6px}
+  .grp .c{color:var(--mut);font-size:.8rem}
+
+  /* stats + settings */
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-size:.86rem;margin:6px 0}
+  .kv .k{color:var(--mut)} .kv .v{font-family:var(--mono)}
+  .note{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px 15px;margin:12px 0}
+  .note h3{margin:.1em 0 .5em;font-size:.98rem}
+  .note p{color:var(--mut);font-size:.85rem;margin:.4em 0}
+  .flag{display:inline-block;border-radius:7px;padding:2px 8px;font-size:.72rem;font-weight:600;font-family:var(--mono)}
+  .flag.ok{background:#0f3b2c;color:var(--good)} .flag.no{background:#3b1d24;color:var(--bad)}
+  .flag.opt{background:#3b2f12;color:var(--warn)}
+  label.field{display:block;margin:10px 0}
+  label.field span{display:block;color:var(--mut);font-size:.8rem;margin-bottom:4px}
+  input[type=text],input[type=password],select{width:100%;background:#0c0f24;border:1px solid var(--line);
+    color:var(--ink);border-radius:10px;padding:10px 12px;font-family:inherit;font-size:.9rem}
+  .switch{display:flex;align-items:center;gap:10px;margin:8px 0}
+  .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#232858;color:#fff;
+    border:1px solid var(--acc);padding:11px 18px;border-radius:12px;font-size:.88rem;z-index:50;
+    opacity:0;pointer-events:none;transition:.2s;max-width:90vw;text-align:center}
+  .toast.on{opacity:1}
+  footer{color:var(--mut2);font-size:.76rem;text-align:center;margin-top:34px;line-height:1.7}
+  .badge-off{display:inline-flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);
+    border-radius:20px;padding:5px 12px;font-size:.78rem;color:var(--good);margin-left:auto}
+  .badge-off .dot{width:8px;height:8px;border-radius:50%;background:var(--good);box-shadow:0 0 8px var(--good)}
+  @media(max-width:620px){ .pillars{grid-template-columns:1fr} header.top .badge-off{display:none} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="logo" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#f3f5ff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="7" width="16" height="12" rx="2"/><path d="M4 11h16"/>
+        <circle cx="12" cy="15" r="2.1" fill="#8b9cff" stroke="#8b9cff"/>
+      </svg>
+    </div>
+    <div class="brand">
+      <h1>Company Brain</h1>
+      <div class="sub">Dein Datenchaos — nach <b>Bedeutung</b> durchsuchbar. Offline.</div>
+    </div>
+    <div class="badge-off" title="Alles läuft in diesem Browser. Keine Datei verlässt das Gerät (außer du schaltest eine EU-KI bewusst frei).">
+      <span class="dot"></span> offline
+    </div>
+  </header>
+
+  <div class="pillars">
+    <div class="pillar"><b><span class="ic">🛡️</span>Liest nur</b><span>Arbeitet an einer Kopie im Browser. Deine Originale bleiben unangetastet.</span></div>
+    <div class="pillar"><b><span class="ic">✋</span>Schlägt vor</b><span>Sortiert nur als Vorschlag. Es wird nichts gelöscht oder verschoben.</span></div>
+    <div class="pillar"><b><span class="ic">🗂️</span>Bewegt nichts</b><span>Die Ordnung ist eine Ansicht über den unbewegten Originalen.</span></div>
+  </div>
+
+  <!-- EINWURF -->
+  <div id="drop" class="drop">
+    <h2>Dateien hineinwerfen</h2>
+    <p>Ordner oder Dateien wählen — der Kasten liest jede <b>einmal</b> und merkt sich ihre Bedeutung.</p>
+    <div class="btnrow">
+      <button id="pickDir" class="primary" title="Zeiger auf den Ordner — es wird nichts kopiert">📁 Ordner verbinden</button>
+      <button id="pickFiles" class="ghost">📄 Dateien wählen</button>
+    </div>
+    <div class="hint" id="fsHint"></div>
+    <input id="fileInput" type="file" multiple style="display:none">
+
+    <div class="prog" id="prog">
+      <div class="bar"><i id="barFill"></i></div>
+      <div class="line">
+        <span class="cur" id="progCur">…</span>
+        <span id="progCount">0 / 0</span>
+      </div>
+      <div class="btnrow" style="margin-top:12px;justify-content:flex-start">
+        <button id="cancelSign" class="ghost">Abbrechen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <div class="tab on" data-tab="search">🔎 Suche</div>
+    <div class="tab" data-tab="order">🗂️ Ordnung <b id="tabCount"></b></div>
+    <div class="tab" data-tab="settings">⚙️ Einstellungen</div>
+  </div>
+
+  <!-- SUCHE -->
+  <section class="panel on" id="panel-search">
+    <div class="searchbox">
+      <input id="q" type="search" placeholder="z. B. „das schwarze Auto, neulich bearbeitet, mit Radstand …“" autocomplete="off">
+      <div class="toggle" id="mode">
+        <button data-m="name">Namenssuche</button>
+        <button class="on" data-m="mean">Bedeutungssuche</button>
+      </div>
+    </div>
+    <div class="searchmeta">
+      <span id="searchInfo">Wirf zuerst Dateien hinein — dann finde alles nach Sinn, nicht nach Dateinamen.</span>
+      <span id="corpusInfo"></span>
+    </div>
+    <ul class="res" id="results"></ul>
+    <div class="empty" id="searchEmpty">
+      <div class="big">🧠</div>
+      <p>Noch kein Katalog. Wirf oben Dateien hinein — schon die erste Suche zeigt den Unterschied<br>zwischen <b>Name</b> und <b>Bedeutung</b>.</p>
+    </div>
+  </section>
+
+  <!-- ORDNUNG -->
+  <section class="panel" id="panel-order">
+    <p class="hint" style="margin-top:0">Ein <b>Vorschlag</b>, wie deine Dateien nach Bedeutung zusammengehören. Es wird nichts verschoben — Klick öffnet die Gruppe.</p>
+    <div class="groups" id="groups"></div>
+    <div class="empty" id="orderEmpty"><div class="big">🗂️</div><p>Noch keine Dateien signiert.</p></div>
+  </section>
+
+  <!-- EINSTELLUNGEN -->
+  <section class="panel" id="panel-settings">
+    <div class="note">
+      <h3>Zustand — ehrlich</h3>
+      <div class="kv">
+        <span class="k">Signierte Dateien</span><span class="v" id="stFiles">0</span>
+        <span class="k">Katalog-Größe</span><span class="v" id="stSize">0 KB</span>
+        <span class="k">Verbundene Ordner</span><span class="v" id="stDirs">0</span>
+        <span class="k">Speicher dauerhaft</span><span class="v" id="stPersist">—</span>
+      </div>
+    </div>
+
+    <div class="note">
+      <h3>Was hier offline läuft</h3>
+      <p><span class="flag ok">immer offline</span> Fingerabdruck (SHA-256), Text aus Text-/PDF-/Office-Dateien, Bedeutungs-Vektor, Vorfilter &amp; Ranking, Katalog — alles in diesem Browser.</p>
+      <p><span id="ocrFlag" class="flag opt">prüfe…</span> Bild-Texterkennung (OCR) über die Browser-Texterkennung, wenn dein Gerät sie mitbringt.</p>
+      <p><span class="flag opt">optional · BYOK</span> Stärkere Cloud-KI (EU) für OCR/Bedeutung — nur wenn du unten bewusst einen Schlüssel hinterlegst. <b>Standard: aus.</b></p>
+    </div>
+
+    <div class="note">
+      <h3>Optionale EU-KI (Bring-Your-Own-Key)</h3>
+      <p>Aus, solange leer. Der Schlüssel bleibt nur in diesem Browser (RAM/lokal) und wird nie ins Repo geschrieben. Erst wenn gesetzt, dürfen einzelne Bilder/Texte zur EU-KI gehen — mit klarer Anzeige.</p>
+      <label class="field"><span>Anbieter</span>
+        <select id="aiProvider">
+          <option value="">— aus (rein offline) —</option>
+          <option value="mistral">Mistral (EU) — OCR &amp; Kurzfassung</option>
+        </select>
+      </label>
+      <label class="field"><span>API-Schlüssel (nur in diesem Browser)</span>
+        <input id="aiKey" type="password" placeholder="sk-…" autocomplete="off"></label>
+      <div class="switch"><input type="checkbox" id="aiPersist"><label for="aiPersist" style="color:var(--mut);font-size:.84rem">Schlüssel in diesem Browser merken (sonst nur bis zum Schließen)</label></div>
+    </div>
+
+    <div class="note">
+      <h3>Katalog verwalten</h3>
+      <p>Der Katalog ist nur ein Verzeichnis der Bedeutung. Ihn zu leeren löscht <b>keine einzige</b> deiner Dateien.</p>
+      <div class="btnrow" style="justify-content:flex-start">
+        <button id="btnPersist" class="ghost">🔒 Speicher dauerhaft machen</button>
+        <button id="btnExport" class="ghost">⬇︎ Katalog exportieren (.json)</button>
+        <button id="btnClear" class="ghost" style="border-color:#5b2731;color:var(--bad)">🗑 Katalog leeren</button>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Company Brain · Probeversion v0.1 — der <b>Erlebnis-Beweis</b>: Bedeutung schlägt Dateiname.<br>
+    Kein Abo · keine Cloud-Pflicht · Originale unantastbar. <a href="impressum.html">Impressum &amp; Datenschutz</a>
+  </footer>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* ============================================================================
+   Company Brain — Probeversion (single-file, offline-first)
+   Alles läuft im Browser. Originale werden nie kopiert oder verändert.
+   Der Katalog (Steckbrief + Vektor + Zeiger) liegt in IndexedDB.
+   ========================================================================== */
+
+const VEC_DIM = 256;                 // Bedeutungs-Vektor (Hashing bag-of-words)
+const SNIPPET_LEN = 600;
+const DB_NAME = "company_brain";     // eigener Namensraum (geteilte github.io-Adresse)
+const DB_VER = 1;
+
+/* ---------- kleine Helfer ---------- */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+function toast(msg, ms=2400){ const t=$("#toast"); t.textContent=msg; t.classList.add("on"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("on"),ms); }
+function fmtKB(bytes){ return bytes<1024 ? bytes+" B" : bytes<1048576 ? (bytes/1024).toFixed(1)+" KB" : (bytes/1048576).toFixed(2)+" MB"; }
+function extOf(name){ const m=/\.([a-z0-9]+)$/i.exec(name||""); return m?m[1].toLowerCase():""; }
+
+/* ---------- IndexedDB ---------- */
+let db;
+function openDB(){
+  return new Promise((res,rej)=>{
+    const r = indexedDB.open(DB_NAME, DB_VER);
+    r.onupgradeneeded = e => {
+      const d = e.target.result;
+      if(!d.objectStoreNames.contains("catalog")) d.createObjectStore("catalog",{keyPath:"hash"});
+      if(!d.objectStoreNames.contains("dirs")) d.createObjectStore("dirs",{keyPath:"id"});
+    };
+    r.onsuccess = e => res(e.target.result);
+    r.onerror = e => rej(e.target.error);
+  });
+}
+function tx(store,mode="readonly"){ return db.transaction(store,mode).objectStore(store); }
+function idbPut(store,val){ return new Promise((res,rej)=>{ const r=tx(store,"readwrite").put(val); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); }); }
+function idbGetAll(store){ return new Promise((res,rej)=>{ const r=tx(store).getAll(); r.onsuccess=()=>res(r.result||[]); r.onerror=()=>rej(r.error); }); }
+function idbGet(store,key){ return new Promise((res,rej)=>{ const r=tx(store).get(key); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+function idbClear(store){ return new Promise((res,rej)=>{ const r=tx(store,"readwrite").clear(); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); }); }
+
+/* ---------- In-Memory Katalog + invertierter Index ---------- */
+let CATALOG = [];            // [{hash,name,path,type,date,size,snippet,vector,summary,category,tokens,tf,dirId}]
+const HASHSET = new Set();   // signierte Hashes (Dedupe)
+let IDX = { df:new Map(), N:0, avgdl:0 };   // BM25
+const SESSION_FILES = new Map();  // hash -> File (nur für per-Datei-Auswahl, diese Sitzung)
+const DIR_HANDLES = new Map();    // dirId -> FileSystemDirectoryHandle
+
+/* ============================================================================
+   1) TEXT-NORMALISIERUNG, TOKENS, SYNONYME (offline "Bedeutung")
+   ========================================================================== */
+// Deutsch-freundliche Umlaut-Faltung + Diakritik entfernen.
+function fold(s){
+  return (s||"").toLowerCase()
+    .replace(/ä/g,"ae").replace(/ö/g,"oe").replace(/ü/g,"ue").replace(/ß/g,"ss")
+    .normalize("NFKD").replace(/[̀-ͯ]/g,"");
+}
+const STOP = new Set(("der die das und oder aber ein eine einer eines dem den des mit von zu im in an auf fuer für ist sind war "
+ +"es er sie wir ihr du ich am als also auch bei bis dann doch nach noch nur ob so um vom war wird wenn wie the a an and or of to "
+ +"in on for is are was be this that with").split(/\s+/));
+function tokens(text){
+  const out=[];
+  for(let w of fold(text).split(/[^a-z0-9]+/)){
+    if(w.length<2 || w.length>28) continue;
+    if(STOP.has(w)) continue;
+    out.push(w);
+  }
+  return out;
+}
+// leichte, vorsichtige Suffix-Kürzung (kein aggressives Stemming)
+function stem(w){
+  return w.replace(/(ungen|ung|heiten|heit|keiten|keit|nisse|niss|innen|isch|lich|bar)$/,"")
+          .replace(/(en|er|es|em|nd|st)$/,"")
+          .replace(/(e|n|s)$/,"") || w;
+}
+// kleine Synonym-/Übersetzungs-Brücke (Query-Erweiterung) — bewusst klein & erweiterbar
+const SYN = {
+  auto:["wagen","fahrzeug","kfz","pkw","car","vehicle"], car:["auto","wagen","fahrzeug"],
+  rechnung:["faktura","invoice","beleg","quittung","zahlung"], invoice:["rechnung","faktura","beleg"],
+  vertrag:["kontrakt","vereinbarung","contract","agreement"], contract:["vertrag","vereinbarung"],
+  foto:["bild","aufnahme","photo","image","picture"], bild:["foto","aufnahme","grafik","image"],
+  angebot:["kostenvoranschlag","offerte","quote","kva"], kunde:["kundin","auftraggeber","client","customer"],
+  schwarz:["black","dunkel","anthrazit"], weiss:["white","hell"], rot:["red"], blau:["blue"],
+  radstand:["wheelbase","achsabstand"], mail:["email","e-mail","nachricht","brief"],
+  steuer:["finanzamt","ust","umsatzsteuer","tax"], lohn:["gehalt","payroll","salary"],
+  termin:["datum","frist","deadline","appointment"], adresse:["anschrift","address","strasse"],
+  tabelle:["liste","excel","sheet","kalkulation"], notiz:["memo","note","vermerk"],
+};
+function expandQuery(qtoks){
+  const set = new Set();
+  for(const t of qtoks){
+    set.add(t); set.add(stem(t));
+    const syn = SYN[t] || SYN[stem(t)];
+    if(syn) for(const s of syn){ set.add(fold(s)); set.add(stem(fold(s))); }
+  }
+  return [...set].filter(Boolean);
+}
+
+/* ---------- Bedeutungs-Vektor (deterministisch, offline) ---------- */
+function hashStr(s){ let h=2166136261>>>0; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } return h>>>0; }
+function buildVector(toks){
+  const v = new Float32Array(VEC_DIM);
+  const tf = new Map();
+  for(const t of toks){ const s=stem(t); tf.set(s,(tf.get(s)||0)+1); }
+  for(const [t,c] of tf){
+    const w = 1 + Math.log(c);
+    // zwei Buckets pro Term (reduziert Kollisionen)
+    v[hashStr(t)%VEC_DIM] += w;
+    v[(hashStr("#"+t)%VEC_DIM)] += w*0.6;
+  }
+  let n=0; for(let i=0;i<VEC_DIM;i++) n+=v[i]*v[i]; n=Math.sqrt(n)||1;
+  for(let i=0;i<VEC_DIM;i++) v[i]/=n;
+  return Array.from(v);
+}
+function cosine(a,b){ let s=0; for(let i=0;i<VEC_DIM;i++) s+=a[i]*b[i]; return s; }
+
+/* ============================================================================
+   2) INHALT AUS DATEIEN HOLEN — Text, PDF, Office(zip), Bild(OCR)
+   ========================================================================== */
+async function sha256(buf){
+  const d = await crypto.subtle.digest("SHA-256", buf);
+  return [...new Uint8Array(d)].map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+async function inflate(u8, format){ // 'deflate'(zlib) | 'deflate-raw'
+  const ds = new DecompressionStream(format);
+  const ab = await new Response(new Blob([u8]).stream().pipeThrough(ds)).arrayBuffer();
+  return new Uint8Array(ab);
+}
+const TEXT_EXT = new Set("txt md markdown csv tsv json log xml html htm srt vtt yaml yml ini cfg js ts css rtf tex eml".split(" "));
+const IMG_EXT  = new Set("png jpg jpeg webp gif bmp tif tiff".split(" "));
+
+function decodeText(u8){
+  try{ return new TextDecoder("utf-8",{fatal:false}).decode(u8); }
+  catch{ return new TextDecoder("latin1").decode(u8); }
+}
+function cleanText(s){
+  return s.replace(/ /g,"").replace(/[ \t ]+/g," ").replace(/\s*\n\s*/g,"\n").replace(/\n{3,}/g,"\n\n").trim();
+}
+
+/* --- PDF: best-effort Textextraktion (FlateDecode via DecompressionStream) --- */
+async function extractPdf(u8){
+  const latin = decodeLatin(u8);
+  let out = [];
+  const re = /stream\r?\n/g; let m;
+  while((m = re.exec(latin))){
+    const start = m.index + m[0].length;
+    const end = latin.indexOf("endstream", start);
+    if(end<0) continue;
+    // Dict-Kopf (~400 Zeichen vor "stream") auf /FlateDecode prüfen
+    const head = latin.slice(Math.max(0,m.index-400), m.index);
+    let bytes = strToU8(latin.slice(start,end));
+    if(/\/FlateDecode/.test(head)){
+      try{ bytes = await inflate(bytes,"deflate"); }catch{ try{ bytes=await inflate(bytes,"deflate-raw"); }catch{ continue; } }
+    } else if(/\/(DCTDecode|JPXDecode|CCITTFaxDecode|ASCII85Decode|LZWDecode)/.test(head)){
+      continue; // Bilder / nicht unterstützte Filter
+    }
+    out.push(pdfTextFromContent(decodeLatin(bytes)));
+    if(out.join(" ").length > 200000) break;
+  }
+  let txt = out.join("\n");
+  if(txt.replace(/\s/g,"").length < 12){
+    // Fallback: lesbare Klartext-Fragmente aus dem Roh-PDF
+    const frag = (latin.match(/[\x20-\x7e -ɏ]{4,}/g)||[]).filter(s=>/[a-zA-Z]{3,}/.test(s));
+    txt = frag.slice(0,400).join(" ");
+  }
+  return cleanText(txt);
+}
+function pdfTextFromContent(s){
+  let out="";
+  // (..)Tj  und  (..)(') und [..]TJ
+  const re = /(?:\[((?:[^\[\]\\]|\\.)*)\]\s*TJ)|(?:\(((?:[^()\\]|\\.)*)\)\s*(?:Tj|'|"))/g;
+  let m;
+  while((m=re.exec(s))){
+    if(m[2]!=null){ out += pdfUnescape(m[2]); out+=" "; }
+    else if(m[1]!=null){
+      const parts = m[1].match(/\(((?:[^()\\]|\\.)*)\)/g)||[];
+      for(const p of parts) out += pdfUnescape(p.slice(1,-1));
+      out += " ";
+    }
+  }
+  return out;
+}
+function pdfUnescape(s){
+  return s.replace(/\\([nrtbf()\\])/g,(_,c)=>({n:"\n",r:"\r",t:"\t",b:"\b",f:"\f","(":"(",")":")","\\":"\\"}[c]||c))
+          .replace(/\\([0-7]{1,3})/g,(_,o)=>String.fromCharCode(parseInt(o,8)));
+}
+function decodeLatin(u8){ let s=""; const CH=8192; for(let i=0;i<u8.length;i+=CH) s+=String.fromCharCode.apply(null,u8.subarray(i,i+CH)); return s; }
+function strToU8(s){ const u=new Uint8Array(s.length); for(let i=0;i<s.length;i++) u[i]=s.charCodeAt(i)&0xff; return u; }
+
+/* --- Office (docx/xlsx/pptx): ZIP lesen + relevante XML inflaten + Tags strippen --- */
+async function extractOffice(u8, ext){
+  const files = await unzip(u8);
+  let picks = [];
+  if(ext==="docx") picks = files.filter(f=>/^word\/(document|header\d*|footer\d*)\.xml$/.test(f.name));
+  else if(ext==="xlsx") picks = files.filter(f=>/^xl\/(sharedStrings\.xml|worksheets\/sheet\d+\.xml)$/.test(f.name));
+  else if(ext==="pptx") picks = files.filter(f=>/^ppt\/(slides\/slide\d+|notesSlides\/notesSlide\d+)\.xml$/.test(f.name));
+  else picks = files.filter(f=>/\.xml$/.test(f.name)).slice(0,20);
+  let out=[];
+  for(const f of picks){
+    try{
+      const data = f.method===8 ? await inflate(f.bytes,"deflate-raw") : f.bytes;
+      out.push(xmlText(decodeText(data)));
+    }catch{}
+  }
+  return cleanText(out.join("\n"));
+}
+function xmlText(xml){
+  return xml.replace(/<w:tab\/>/g," ").replace(/<\/w:p>|<\/a:p>|<br\/?>/g,"\n")
+            .replace(/<[^>]+>/g," ").replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">")
+            .replace(/&quot;/g,'"').replace(/&#(\d+);/g,(_,n)=>String.fromCharCode(+n));
+}
+// Minimaler ZIP-Leser über End-of-Central-Directory + Central Directory.
+async function unzip(u8){
+  const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
+  // EOCD suchen (Signatur 0x06054b50), von hinten
+  let eocd=-1;
+  for(let i=u8.length-22; i>=0 && i>u8.length-22-65536; i--){ if(dv.getUint32(i,true)===0x06054b50){ eocd=i; break; } }
+  if(eocd<0) return [];
+  const cdCount = dv.getUint16(eocd+10,true);
+  let off = dv.getUint32(eocd+16,true);
+  const out=[];
+  for(let n=0;n<cdCount && off+46<=u8.length;n++){
+    if(dv.getUint32(off,true)!==0x02014b50) break;
+    const method = dv.getUint16(off+10,true);
+    const compSize = dv.getUint32(off+20,true);
+    const nameLen = dv.getUint16(off+28,true);
+    const extraLen = dv.getUint16(off+30,true);
+    const cmtLen = dv.getUint16(off+32,true);
+    const lho = dv.getUint32(off+42,true);
+    const name = decodeText(u8.subarray(off+46, off+46+nameLen));
+    // lokalen Header lesen, um Datenanfang zu bestimmen
+    if(lho+30<=u8.length && dv.getUint32(lho,true)===0x04034b50){
+      const lNameLen = dv.getUint16(lho+26,true);
+      const lExtra = dv.getUint16(lho+28,true);
+      const dataStart = lho+30+lNameLen+lExtra;
+      out.push({name, method, bytes: u8.subarray(dataStart, dataStart+compSize)});
+    }
+    off += 46+nameLen+extraLen+cmtLen;
+  }
+  return out;
+}
+
+/* --- Bild-OCR: Browser TextDetector (offline, wenn vorhanden) oder optional EU-Cloud --- */
+const HAS_TEXTDETECTOR = ("TextDetector" in window);
+async function ocrImage(blob){
+  // 1) Browser-eigene Texterkennung (offline)
+  if(HAS_TEXTDETECTOR){
+    try{
+      const bmp = await createImageBitmap(blob);
+      const det = new window.TextDetector();
+      const res = await det.detect(bmp);
+      bmp.close && bmp.close();
+      const t = res.map(r=>r.rawValue).join(" ").trim();
+      if(t) return {text:t, via:"Browser-Texterkennung"};
+    }catch{}
+  }
+  // 2) optional: EU-Cloud (nur wenn Schlüssel gesetzt)
+  if(AI.provider==="mistral" && AI.key){
+    try{ const t = await mistralOcr(blob); if(t) return {text:t, via:"Mistral EU (OCR)"}; }catch(e){ /* fail-soft */ }
+  }
+  return {text:"", via:""};
+}
+
+/* ---------- Kategorie-Vorschlag (Regeln) ---------- */
+const CATS = [
+  {key:"Rechnung", ic:"🧾", ext:[], kw:["rechnung","invoice","faktura","betrag","mwst","ust","zahlung","beleg","quittung"]},
+  {key:"Vertrag",  ic:"📜", ext:[], kw:["vertrag","contract","vereinbarung","kündigung","laufzeit","unterschrift","agb"]},
+  {key:"Angebot",  ic:"💬", ext:[], kw:["angebot","kostenvoranschlag","offerte","quote","kva"]},
+  {key:"Foto/Bild",ic:"🖼️", ext:["png","jpg","jpeg","webp","gif","bmp","tif","tiff"], kw:[]},
+  {key:"Tabelle",  ic:"📊", ext:["xlsx","xls","csv","tsv"], kw:["summe","tabelle","kalkulation"]},
+  {key:"Präsentation",ic:"📽️",ext:["pptx","ppt"], kw:[]},
+  {key:"E-Mail",   ic:"✉️", ext:["eml","msg"], kw:["von:","an:","betreff:","gesendet"]},
+  {key:"Text/Notiz",ic:"📝",ext:["txt","md","markdown","rtf"], kw:["notiz","memo","protokoll"]},
+  {key:"Dokument", ic:"📄", ext:["pdf","docx","doc","odt"], kw:[]},
+  {key:"Code",     ic:"💻", ext:["js","ts","py","html","css","java","json","xml","sh"], kw:[]},
+];
+function suggestCategory(name, text){
+  const e = extOf(name); const t = fold(name+" "+(text||"").slice(0,2000));
+  let best=null, bestScore=0;
+  for(const c of CATS){
+    let s=0;
+    if(c.ext.includes(e)) s+=3;
+    for(const k of c.kw) if(t.includes(fold(k))) s+=2;
+    if(s>bestScore){ bestScore=s; best=c; }
+  }
+  return best ? best.key : "Sonstiges";
+}
+function catIcon(key){ const c=CATS.find(c=>c.key===key); return c?c.ic:"📦"; }
+
+/* ---------- Kurzfassung (offline heuristisch) ---------- */
+function summarize(text){
+  if(!text) return "";
+  const clean = text.replace(/\s+/g," ").trim();
+  const sents = clean.split(/(?<=[.!?])\s+/).filter(s=>s.length>20);
+  if(sents.length) return sents.slice(0,2).join(" ").slice(0,220);
+  return clean.slice(0,180);
+}
+
+/* ============================================================================
+   3) SIGNIEREN (der eine langsame Durchgang)
+   ========================================================================== */
+let signing = false, cancelReq = false;
+
+async function readContent(file, buf){
+  const e = extOf(file.name);
+  const u8 = new Uint8Array(buf);
+  try{
+    if(e==="pdf") return {text: await extractPdf(u8), via:"PDF-Text"};
+    if(["docx","xlsx","pptx"].includes(e)) return {text: await extractOffice(u8,e), via:e.toUpperCase()};
+    if(TEXT_EXT.has(e) || (file.type||"").startsWith("text/")) return {text: cleanText(decodeText(u8)), via:"Text"};
+    if(IMG_EXT.has(e) || (file.type||"").startsWith("image/")){ const r = await ocrImage(file); return {text:r.text, via:r.via||"Bild (kein Text erkannt)"}; }
+  }catch(err){ /* fail-soft */ }
+  return {text:"", via:"nur Name/Metadaten"};
+}
+
+async function signFile(entryFile, path, dirId){
+  const file = entryFile;
+  const buf = await file.arrayBuffer();
+  const hash = await sha256(buf);
+  if(HASHSET.has(hash)) return {skipped:true, hash};
+  const {text, via} = await readContent(file, buf);
+  const toks = tokens((file.name+" ").repeat(2) + " " + text); // Name doppelt gewichten
+  const rec = {
+    hash, name:file.name, path: path||file.name, type:(file.type||extOf(file.name)),
+    ext: extOf(file.name), date: file.lastModified||Date.now(), size:file.size,
+    snippet: (text||"").slice(0,SNIPPET_LEN), via,
+    vector: buildVector(toks),
+    tf: termFreq(toks),
+    summary: summarize(text),
+    category: suggestCategory(file.name, text),
+    dirId: dirId||null,
+    nameTokens: tokens(file.name),
+  };
+  await idbPut("catalog", rec);
+  CATALOG.push(rec); HASHSET.add(hash);
+  if(!dirId) SESSION_FILES.set(hash, file);
+  return {skipped:false, hash, rec};
+}
+function termFreq(toks){ const m={}; for(const t of toks){ const s=stem(t); m[s]=(m[s]||0)+1; } return m; }
+
+/* --- Fortschritt / Batch --- */
+async function signBatch(items){ // items: [{file, path, dirId}]
+  if(signing) return;
+  signing=true; cancelReq=false;
+  const prog=$("#prog"), fill=$("#barFill"), cur=$("#progCur"), cnt=$("#progCount");
+  prog.classList.add("on");
+  let done=0, skipped=0, added=0; const total=items.length;
+  for(const it of items){
+    if(cancelReq) break;
+    cur.textContent = it.path||it.file.name;
+    try{ const r = await signFile(it.file, it.path, it.dirId); r.skipped?skipped++:added++; }
+    catch(e){ /* eine Datei darf nicht alles stoppen */ }
+    done++;
+    fill.style.width = (done/total*100).toFixed(1)+"%";
+    cnt.textContent = `${done} / ${total}`;
+    if(done%5===0) await new Promise(r=>setTimeout(r)); // UI atmen lassen
+  }
+  rebuildIndex();
+  refreshAll();
+  signing=false;
+  setTimeout(()=>prog.classList.remove("on"), 900);
+  toast(cancelReq ? `Abgebrochen · ${added} neu signiert`
+                  : `Fertig · ${added} neu signiert, ${skipped} schon bekannt (übersprungen)`);
+}
+
+/* ============================================================================
+   4) DATEI-EINWURF: File System Access (Zeiger) ODER Datei-Auswahl (Sitzung)
+   ========================================================================== */
+const HAS_FSA = ("showDirectoryPicker" in window);
+
+async function pickDirectory(){
+  if(!HAS_FSA){ toast("Dein Browser kann keine Ordner verbinden — nimm „Dateien wählen“."); return; }
+  let handle;
+  try{ handle = await window.showDirectoryPicker({mode:"read"}); }
+  catch{ return; }
+  const dirId = "dir_"+Date.now();
+  DIR_HANDLES.set(dirId, handle);
+  try{ await idbPut("dirs", {id:dirId, name:handle.name, handle, added:Date.now()}); }catch{}
+  const items=[];
+  await walkDir(handle, handle.name, items);
+  toast(`${items.length} Dateien im Ordner „${handle.name}“ — Signieren startet…`);
+  await signBatch(items.map(x=>({file:x.file, path:x.path, dirId})));
+}
+async function walkDir(handle, prefix, out, depth=0){
+  if(depth>8) return;
+  for await (const [name, entry] of handle.entries()){
+    if(name.startsWith(".")) continue;
+    if(entry.kind==="file"){
+      try{ const f=await entry.getFile(); if(f.size<=80*1024*1024) out.push({file:f, path:prefix+"/"+name}); }catch{}
+    } else if(entry.kind==="directory"){
+      await walkDir(entry, prefix+"/"+name, out, depth+1);
+    }
+  }
+}
+function pickFiles(){ $("#fileInput").click(); }
+$("#fileInput").addEventListener("change", async e=>{
+  const files=[...e.target.files]; e.target.value="";
+  if(!files.length) return;
+  await signBatch(files.filter(f=>f.size<=80*1024*1024).map(f=>({file:f, path:f.webkitRelativePath||f.name, dirId:null})));
+});
+
+/* Drag & Drop */
+const drop=$("#drop");
+["dragenter","dragover"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("hot");}));
+["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();if(ev==="dragleave"&&e.target!==drop)return;drop.classList.remove("hot");}));
+drop.addEventListener("drop", async e=>{
+  e.preventDefault(); drop.classList.remove("hot");
+  const items=[...(e.dataTransfer.items||[])];
+  const out=[];
+  const roots = items.map(it=>it.webkitGetAsEntry && it.webkitGetAsEntry()).filter(Boolean);
+  if(roots.length){ for(const r of roots) await walkEntry(r, "", out); }
+  else { for(const f of e.dataTransfer.files) out.push({file:f, path:f.name}); }
+  if(out.length) await signBatch(out.filter(x=>x.file.size<=80*1024*1024).map(x=>({...x,dirId:null})));
+});
+function walkEntry(entry, prefix, out){
+  return new Promise(res=>{
+    if(entry.isFile){ entry.file(f=>{ out.push({file:f, path:(prefix?prefix+"/":"")+f.name}); res(); }, ()=>res()); }
+    else if(entry.isDirectory){
+      const rd=entry.createReader(); const all=[];
+      const read=()=>rd.readEntries(async es=>{
+        if(!es.length){ for(const c of all) await walkEntry(c, (prefix?prefix+"/":"")+entry.name, out); res(); }
+        else { all.push(...es); read(); }
+      }, ()=>res());
+      read();
+    } else res();
+  });
+}
+
+/* ============================================================================
+   5) SUCHE (Name vs. Bedeutung) + BM25 + Begründung
+   ========================================================================== */
+let MODE="mean";
+function rebuildIndex(){
+  const df=new Map(); let totalLen=0;
+  for(const r of CATALOG){
+    const seen=new Set();
+    for(const t in r.tf){ if(!seen.has(t)){ df.set(t,(df.get(t)||0)+1); seen.add(t);} }
+    r._len = Object.values(r.tf).reduce((a,b)=>a+b,0);
+    totalLen += r._len;
+  }
+  IDX = { df, N:CATALOG.length, avgdl: CATALOG.length? totalLen/CATALOG.length : 0 };
+}
+function bm25(r, qterms){
+  const k1=1.5, b=0.75; let s=0; const hits=[];
+  for(const q of qterms){
+    const f = r.tf[q]||0; if(!f) continue;
+    const df = IDX.df.get(q)||0.5;
+    const idf = Math.log(1 + (IDX.N - df + 0.5)/(df + 0.5));
+    const denom = f + k1*(1 - b + b*(r._len/(IDX.avgdl||1)));
+    s += idf * (f*(k1+1))/denom;
+    hits.push(q);
+  }
+  return {score:s, hits};
+}
+function search(query){
+  const raw = tokens(query);
+  if(MODE==="name"){
+    const q = fold(query.trim());
+    const res=[];
+    for(const r of CATALOG){
+      const hay=fold(r.name);
+      if(q && hay.includes(q)) res.push({r, score:2, why:{name:true, terms:[q]}, kind:"name"});
+      else if(raw.length && raw.every(t=>hay.includes(t))) res.push({r, score:1, why:{name:true, terms:raw}, kind:"name"});
+    }
+    return res.sort((a,b)=>b.score-a.score || b.r.date-a.r.date);
+  }
+  // Bedeutungssuche
+  const qexp = expandQuery(raw.map(stem));
+  const qvec = buildVector(raw);
+  const scored=[];
+  for(const r of CATALOG){
+    const {score:lex, hits} = bm25(r, qexp);
+    const cos = cosine(qvec, r.vector);
+    const nameHit = raw.some(t=>fold(r.name).includes(t));
+    const total = lex + cos*3 + (nameHit?0.6:0);
+    if(total>0.02){
+      // wo trafen die Begriffe? (Begründung)
+      const inName=[], inContent=[];
+      const snipFold = fold(r.snippet);
+      for(const h of hits){ (fold(r.name).includes(h)?inName:inContent).push(h); }
+      scored.push({r, score:total, cos, lex, kind:"mean",
+        why:{terms:hits, inName, inContent, category:r.category, nameHit,
+             viaOCR: /OCR|Texterkennung/.test(r.via) && inContent.length>0}});
+    }
+  }
+  return scored.sort((a,b)=>b.score-a.score).slice(0,60);
+}
+
+/* ---------- Ergebnis-Rendering ---------- */
+function scoreClass(s){ return s>=6?"hi":s>=2.5?"mid":s>=1?"" :"lo"; }
+function highlight(text, terms){
+  let out = escapeHtml(text);
+  const uniq=[...new Set(terms.filter(t=>t&&t.length>2))];
+  for(const t of uniq){
+    try{ out = out.replace(new RegExp("("+t.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+")","gi"), "<mark>$1</mark>"); }catch{}
+  }
+  return out;
+}
+function escapeHtml(s){ return (s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+function renderResults(query){
+  const ul=$("#results"), empty=$("#searchEmpty"), info=$("#searchInfo");
+  if(!CATALOG.length){ empty.style.display="block"; ul.innerHTML=""; return; }
+  empty.style.display="none";
+  if(!query.trim()){ ul.innerHTML=""; info.textContent = MODE==="name"
+      ? "Namenssuche: findet nur, was im Dateinamen steht."
+      : "Bedeutungssuche: findet nach Sinn — auch Text aus PDF, Office und (wo möglich) Bildern."; return; }
+  const t0=performance.now();
+  const results = search(query);
+  const dt=(performance.now()-t0);
+  info.innerHTML = `<b>${results.length}</b> Treffer · ${dt.toFixed(dt<1?2:0)} ms · `
+    + (MODE==="name" ? "Namenssuche" : "Bedeutungssuche");
+  if(!results.length){
+    ul.innerHTML = `<div class="empty"><div class="big">🔍</div><p>Kein Treffer.`
+      + (MODE==="name" ? ` Probier den Umschalter auf <b>Bedeutungssuche</b> — dieselbe Frage, mehr Sinn.` : "")
+      + `</p></div>`;
+    return;
+  }
+  ul.innerHTML = results.map(hit=>{
+    const r=hit.r; const sc = MODE==="name" ? "" : hit.score.toFixed(1);
+    const terms = hit.why.terms||hit.why.inContent||[];
+    const why = renderWhy(hit);
+    const snip = r.snippet ? `<div class="snip">${highlight(r.snippet.slice(0,SNIPPET_LEN), (hit.why.terms||[]).concat(tokens($("#q").value)))}</div>` : "";
+    return `<li class="card" data-hash="${r.hash}">
+      <div class="h">
+        <div>
+          <div class="fname">${catIcon(r.category)} ${escapeHtml(r.name)}</div>
+          <div class="path">${escapeHtml(r.path)}</div>
+          <div><span class="cat">${escapeHtml(r.category)}</span></div>
+        </div>
+        ${sc?`<span class="score ${scoreClass(hit.score)}">${sc}</span>`:""}
+      </div>
+      ${why}
+      ${snip}
+      <div class="cardbtns">
+        <button class="openBtn" data-hash="${r.hash}">↗ Öffnen</button>
+        ${r.summary?`<button class="sumBtn" data-hash="${r.hash}">✎ Kurzfassung</button>`:""}
+      </div>
+    </li>`;
+  }).join("");
+}
+function renderWhy(hit){
+  if(hit.kind==="name") return `<div class="why">Treffer im <b>Dateinamen</b>.</div>`;
+  const w=hit.why; const bits=[];
+  if(w.inName && w.inName.length) bits.push(`im <b>Namen</b>: ${w.inName.map(chip).join("")}`);
+  if(w.inContent && w.inContent.length) bits.push(`im <b>Inhalt</b>${w.viaOCR?" (aus Bild-Text)":""}: ${w.inContent.map(chip).join("")}`);
+  const cosTxt = hit.cos>0.12 ? ` · sinnverwandt (${(hit.cos*100|0)}%)` : "";
+  if(!bits.length && hit.cos>0.1) return `<div class="why">semantisch ähnlich${cosTxt}, auch ohne exaktes Wort.</div>`;
+  return `<div class="why">Gefunden, weil ${bits.join("; ")}${cosTxt}.</div>`;
+}
+function chip(t){ return `<span class="chip">${escapeHtml(t)}</span>`; }
+
+/* ---------- Öffnen (über Handle re-lesen — kein Kopieren) ---------- */
+async function openFile(hash){
+  const r = CATALOG.find(x=>x.hash===hash); if(!r) return;
+  // 1) Sitzungs-Datei (per Datei-Auswahl geladen)
+  if(SESSION_FILES.has(hash)){ return showBlob(SESSION_FILES.get(hash), r); }
+  // 2) über den verbundenen Ordner (Handle) — braucht ggf. Erlaubnis
+  if(r.dirId){
+    let handle = DIR_HANDLES.get(r.dirId);
+    if(!handle){ const d=await idbGet("dirs", r.dirId); handle=d&&d.handle; if(handle) DIR_HANDLES.set(r.dirId,handle); }
+    if(handle){
+      try{
+        const perm = await handle.requestPermission({mode:"read"});
+        if(perm!=="granted"){ toast("Erlaubnis für den Ordner nötig, um das Original zu öffnen."); return; }
+        const file = await getByPath(handle, r.path);
+        if(file) return showBlob(file, r);
+      }catch(e){}
+    }
+  }
+  toast("Original nicht erreichbar (Ordner nicht verbunden). Der Katalog-Eintrag bleibt.");
+}
+async function getByPath(root, path){
+  const parts = path.split("/").filter(Boolean);
+  if(parts[0]===root.name) parts.shift();
+  let h=root;
+  for(let i=0;i<parts.length-1;i++){ h=await h.getDirectoryHandle(parts[i]); }
+  const fh=await h.getFileHandle(parts[parts.length-1]);
+  return await fh.getFile();
+}
+function showBlob(file, r){
+  const url=URL.createObjectURL(file);
+  const w=window.open(url,"_blank");
+  if(!w){ const a=document.createElement("a"); a.href=url; a.download=r.name; a.click(); }
+  setTimeout(()=>URL.revokeObjectURL(url), 60000);
+}
+
+/* ============================================================================
+   6) ORDNUNG (virtuelle Gruppen)
+   ========================================================================== */
+function renderGroups(){
+  const box=$("#groups"), empty=$("#orderEmpty");
+  if(!CATALOG.length){ empty.style.display="block"; box.innerHTML=""; return; }
+  empty.style.display="none";
+  const m=new Map();
+  for(const r of CATALOG){ m.set(r.category,(m.get(r.category)||0)+1); }
+  const arr=[...m.entries()].sort((a,b)=>b[1]-a[1]);
+  box.innerHTML = arr.map(([k,c])=>`<div class="grp" data-cat="${escapeHtml(k)}">
+      <div class="ic">${catIcon(k)}</div><div class="n">${escapeHtml(k)}</div><div class="c">${c} Datei${c!==1?"en":""}</div></div>`).join("");
+}
+function showGroup(cat){
+  $$(".tab").forEach(t=>t.classList.toggle("on", t.dataset.tab==="search"));
+  $$(".panel").forEach(p=>p.classList.remove("on")); $("#panel-search").classList.add("on");
+  MODE="mean"; setToggle();
+  const ul=$("#results"); $("#searchEmpty").style.display="none";
+  const items = CATALOG.filter(r=>r.category===cat).sort((a,b)=>b.date-a.date);
+  $("#searchInfo").innerHTML = `Gruppe <b>${catIcon(cat)} ${escapeHtml(cat)}</b> · ${items.length} Datei(en) · <span style="color:var(--mut2)">nur Vorschlag, nichts verschoben</span>`;
+  ul.innerHTML = items.map(r=>`<li class="card" data-hash="${r.hash}">
+      <div class="h"><div><div class="fname">${catIcon(r.category)} ${escapeHtml(r.name)}</div>
+      <div class="path">${escapeHtml(r.path)}</div></div></div>
+      ${r.summary?`<div class="why">${escapeHtml(r.summary)}</div>`:""}
+      <div class="cardbtns"><button class="openBtn" data-hash="${r.hash}">↗ Öffnen</button></div></li>`).join("");
+  $("#q").value="";
+}
+
+/* ============================================================================
+   7) OPTIONALE EU-KI (BYOK) — Mistral OCR, strikt opt-in
+   ========================================================================== */
+const AI = { provider:"", key:"" };
+function loadAI(){
+  const p=localStorage.getItem("cb_ai_provider")||"";
+  const k=localStorage.getItem("cb_ai_key")||"";
+  if(p){ AI.provider=p; $("#aiProvider").value=p; }
+  if(k){ AI.key=k; $("#aiKey").value=k; $("#aiPersist").checked=true; }
+}
+function saveAI(){
+  AI.provider=$("#aiProvider").value; AI.key=$("#aiKey").value.trim();
+  if($("#aiPersist").checked){ localStorage.setItem("cb_ai_provider",AI.provider); localStorage.setItem("cb_ai_key",AI.key); }
+  else { localStorage.removeItem("cb_ai_provider"); localStorage.removeItem("cb_ai_key"); }
+}
+async function mistralOcr(blob){
+  const b64 = await blobToDataURL(blob);
+  const res = await fetch("https://api.mistral.ai/v1/ocr", {
+    method:"POST", headers:{"Authorization":"Bearer "+AI.key,"Content-Type":"application/json"},
+    body: JSON.stringify({ model:"mistral-ocr-latest", document:{type:"image_url", image_url:b64} })
+  });
+  if(!res.ok) throw new Error("OCR "+res.status);
+  const j = await res.json();
+  return (j.pages||[]).map(p=>p.markdown||p.text||"").join("\n").trim();
+}
+function blobToDataURL(blob){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(blob); }); }
+
+/* ============================================================================
+   8) UI-Verdrahtung + Persistenz + Laden
+   ========================================================================== */
+function setToggle(){ $$("#mode button").forEach(b=>b.classList.toggle("on", b.dataset.m===MODE)); }
+function refreshAll(){
+  $("#tabCount").textContent = CATALOG.length?`· ${CATALOG.length}`:"";
+  $("#corpusInfo").textContent = CATALOG.length?`Katalog: ${CATALOG.length} Dateien`:"";
+  renderResults($("#q").value);
+  renderGroups();
+  renderStats();
+}
+function renderStats(){
+  $("#stFiles").textContent = CATALOG.length;
+  let bytes=0; for(const r of CATALOG) bytes += (r.vector.length*4) + (r.snippet?r.snippet.length:0) + 200;
+  $("#stSize").textContent = fmtKB(bytes);
+  $("#stDirs").textContent = DIR_HANDLES.size;
+}
+
+// Tabs
+$$(".tab").forEach(t=>t.addEventListener("click",()=>{
+  $$(".tab").forEach(x=>x.classList.remove("on")); t.classList.add("on");
+  $$(".panel").forEach(p=>p.classList.remove("on")); $("#panel-"+t.dataset.tab).classList.add("on");
+}));
+// Suche
+$("#q").addEventListener("input", ()=>renderResults($("#q").value));
+$$("#mode button").forEach(b=>b.addEventListener("click",()=>{ MODE=b.dataset.m; setToggle(); renderResults($("#q").value); }));
+// Einwurf
+$("#pickDir").addEventListener("click", pickDirectory);
+$("#pickFiles").addEventListener("click", pickFiles);
+$("#cancelSign").addEventListener("click", ()=>{ cancelReq=true; });
+// Ergebnis-Klicks (delegiert)
+document.addEventListener("click", e=>{
+  const ob=e.target.closest(".openBtn"); if(ob){ openFile(ob.dataset.hash); return; }
+  const sb=e.target.closest(".sumBtn"); if(sb){ const r=CATALOG.find(x=>x.hash===sb.dataset.hash); if(r) toast(r.summary||"—", 4500); return; }
+  const gp=e.target.closest(".grp"); if(gp){ showGroup(gp.dataset.cat); return; }
+});
+// EU-KI
+$("#aiProvider").addEventListener("change", saveAI);
+$("#aiKey").addEventListener("change", saveAI);
+$("#aiPersist").addEventListener("change", saveAI);
+// Katalog-Verwaltung
+$("#btnPersist").addEventListener("click", async ()=>{
+  if(navigator.storage && navigator.storage.persist){ const ok=await navigator.storage.persist(); toast(ok?"Speicher ist jetzt dauerhaft.":"Browser hat es (noch) nicht gewährt."); renderPersist(); }
+});
+$("#btnExport").addEventListener("click", ()=>{
+  const slim = CATALOG.map(({hash,name,path,type,date,size,category,summary,snippet})=>({hash,name,path,type,date,size,category,summary,snippet}));
+  const blob=new Blob([JSON.stringify({app:"company-brain",v:1,count:slim.length,catalog:slim},null,2)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="company-brain-katalog.json"; a.click();
+});
+$("#btnClear").addEventListener("click", async ()=>{
+  if(!confirm("Katalog leeren? Es wird KEINE deiner Dateien gelöscht — nur das Bedeutungs-Verzeichnis.")) return;
+  await idbClear("catalog"); await idbClear("dirs");
+  CATALOG=[]; HASHSET.clear(); DIR_HANDLES.clear(); SESSION_FILES.clear();
+  rebuildIndex(); refreshAll(); toast("Katalog geleert. Deine Originale sind unberührt.");
+});
+
+async function renderPersist(){
+  let txt="—";
+  if(navigator.storage && navigator.storage.persisted){ txt = (await navigator.storage.persisted())?"ja":"nein (Browser darf löschen)"; }
+  $("#stPersist").textContent = txt;
+}
+function renderFsHint(){
+  const h=$("#fsHint");
+  if(HAS_FSA) h.innerHTML = `„Ordner verbinden“ merkt sich nur einen <b>Zeiger</b> auf deinen Ordner — es wird nichts kopiert. Zum Öffnen fragt der Browser einmal um Erlaubnis.`;
+  else h.innerHTML = `Dein Browser kann keine Ordner dauerhaft verbinden — „Dateien wählen“ funktioniert trotzdem (nur für diese Sitzung).`;
+  $("#pickDir").style.display = HAS_FSA ? "" : "none";
+}
+function renderOcrFlag(){
+  const f=$("#ocrFlag");
+  if(HAS_TEXTDETECTOR){ f.className="flag ok"; f.textContent="verfügbar"; }
+  else { f.className="flag opt"; f.textContent="nicht in diesem Browser"; }
+}
+
+async function boot(){
+  db = await openDB();
+  CATALOG = await idbGetAll("catalog");
+  for(const r of CATALOG){ HASHSET.add(r.hash); if(!r.tf) r.tf=termFreq(tokens(r.name+" "+(r.snippet||""))); }
+  const dirs = await idbGetAll("dirs");
+  for(const d of dirs){ if(d.handle) DIR_HANDLES.set(d.id, d.handle); }
+  rebuildIndex();
+  loadAI();
+  renderFsHint(); renderOcrFlag(); renderPersist();
+  refreshAll();
+  setToggle();
+  // Service Worker (offline)
+  if("serviceWorker" in navigator){ try{ await navigator.serviceWorker.register("sw.js"); }catch{} }
+}
+boot();
+</script>
+</body>
+</html>
