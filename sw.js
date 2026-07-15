@@ -1,6 +1,6 @@
 /* Company Brain — Service Worker (offline App-Schale, cache-first).
    Fremde Origins werden durchgereicht (z. B. bewusst freigeschaltete EU-KI). */
-const CACHE = "company-brain-v0-2";
+const CACHE = "company-brain-v0-3";
 const SHELL = [
   "./",
   "./index.html",
@@ -8,7 +8,15 @@ const SHELL = [
   "./icon-192.png",
   "./icon-512.png",
   "./impressum.html",
-  "./modules/03_embedding.js"
+  "./modules/01_storage.js",
+  "./modules/02_spore.js",
+  "./modules/03_embedding.js",
+  "./modules/04_match.js",
+  "./modules/05_anastomose.js",
+  "./modules/05b_nostr_relay.js",
+  "./modules/noble-secp256k1.js",
+  "./modules/23_rendezvous.js",
+  "./modules/rendezvous-init.js"
 ];
 
 self.addEventListener("install", e => {
