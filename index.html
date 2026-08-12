@@ -242,6 +242,12 @@
     <div class="searchbox">
       <input id="q" type="search" placeholder="z. B. „das schwarze Auto, neulich bearbeitet, mit Radstand …“" autocomplete="off">
       <button id="mic" class="ghost" title="Per Sprache suchen" aria-label="Per Sprache suchen" style="padding:11px 13px">🎤</button>
+      <!-- Sprache fürs Mikrofon (Klaus 2026-08-12). Die Browser-Spracherkennung
+           kann die Sprache NICHT erraten — sie muss ihr gesagt werden. Vorher
+           stand hier fest Deutsch. Vorbelegt aus der Geräte-Sprache, Wahl bleibt. -->
+      <select id="micLang" class="ghost" aria-label="Sprache fürs Mikrofon"
+              title="In welcher Sprache du sprichst"
+              style="padding:11px 9px;max-width:11rem"></select>
       <div class="toggle" id="mode">
         <button data-m="name">Namenssuche</button>
         <button class="on" data-m="mean">Bedeutungssuche</button>
@@ -1221,17 +1227,85 @@ async function removeDir(id){
   toast("Ordner getrennt. Deine Dateien sind unberührt.");
 }
 
+/* ---------- Sprache fürs Mikrofon (Klaus 2026-08-12) ----------
+ *
+ * Vorher stand unten fest `recog.lang="de-DE"`. Für jeden, der kein Deutsch
+ * spricht, war die Sprachsuche damit kaputt — sie lieferte den Versuch, die
+ * fremde Sprache als Deutsch zu hören.
+ *
+ * Die Browser-Spracherkennung hat KEINE Sprach-Erkennung: sie hört genau die
+ * Sprache, die man ihr sagt. Darum Vorauswahl aus der Geräte-Sprache (ohne dass
+ * jemand etwas einstellt) + eine gespeicherte Wahl daneben. */
+const MIC_LANGS = [
+  ["de-DE","Deutsch"], ["en-US","English"], ["ru-RU","Русский (Russisch)"],
+  ["ar-SA","العربية (Arabisch)"], ["tr-TR","Türkçe"], ["pl-PL","Polski"],
+  ["uk-UA","Українська (Ukrainisch)"], ["fr-FR","Français"],
+  ["es-ES","Español"], ["it-IT","Italiano"],
+  ["ps-AF","پښتو (Paschtu)"], ["fa-IR","دری / فارسی (Dari · Persisch)"]
+];
+const LS_MICLANG = "companybrain_miclang";
+function micName(c){ const p=MIC_LANGS.find(x=>x[0]===c); return p?p[1]:c; }
+function micLangVorauswahl(){
+  const roh=String((navigator.languages&&navigator.languages[0])||navigator.language||"");
+  if(!roh) return "de-DE";
+  const genau=MIC_LANGS.find(x=>x[0].toLowerCase()===roh.toLowerCase()); if(genau) return genau[0];
+  const kurz=roh.split("-")[0].toLowerCase();
+  const teil=MIC_LANGS.find(x=>x[0].split("-")[0].toLowerCase()===kurz);
+  return teil?teil[0]:"de-DE";
+}
+let micLang=(()=>{ try{ const g=localStorage.getItem(LS_MICLANG);
+  if(g&&MIC_LANGS.some(x=>x[0]===g)) return g; }catch{} return micLangVorauswahl(); })();
+
+/* Hat der Browser überhaupt in der gewählten Sprache gehört?
+ * Gemessen an Klaus' Gerät (2026-08-11): Paschtu kam als „Salaam" zurück, in
+ * LATEINISCHEN Buchstaben, und OHNE Fehler. Es scheitert, ohne zu scheitern.
+ * Wer eine Sprache mit eigener Schrift wählt und Latein zurückbekommt, wurde
+ * nicht verstanden. Der Text bleibt stehen — ein Hinweis, keine Bevormundung. */
+const SCHRIFT_ERWARTET = {
+  ar:[/[\u0600-\u06FF]/,"arabischer"], fa:[/[\u0600-\u06FF]/,"arabischer"],
+  ps:[/[\u0600-\u06FF]/,"arabischer"], ru:[/[\u0400-\u04FF]/,"kyrillischer"],
+  uk:[/[\u0400-\u04FF]/,"kyrillischer"]
+};
+function schriftPasstNicht(text,lang){
+  const e=SCHRIFT_ERWARTET[String(lang||"").split("-")[0].toLowerCase()];
+  if(!e||!text||text.trim().length<4) return null;
+  if(e[0].test(text)) return null;
+  return "Der Browser hat vermutlich nicht in "+micName(lang)+" gehört — der Text steht in lateinischer Schrift, nicht in "+e[1]+". Du kannst ihn stehen lassen oder tippen.";
+}
+function micFehlerText(code){
+  switch(code){
+    case "language-not-supported": return "Dieser Browser versteht "+micName(micLang)+" nicht. Wähle eine andere Sprache — oder tippe.";
+    case "not-allowed": case "service-not-allowed": return "Das Mikrofon ist nicht freigegeben — im Browser erlauben oder tippen.";
+    case "no-speech": return "Nichts gehört. Sprich etwas näher am Gerät.";
+    case "audio-capture": return "Kein Mikrofon gefunden.";
+    case "network": return "Die Spracherkennung braucht kurz Internet und kam nicht durch.";
+    default: return "Mikrofon nicht verfügbar oder abgelehnt.";
+  }
+}
+(function micLangWahl(){
+  const sel=$("#micLang"); if(!sel) return;
+  MIC_LANGS.forEach(([c,n])=>{ const o=document.createElement("option"); o.value=c; o.textContent=n; sel.appendChild(o); });
+  sel.value=micLang;
+  sel.addEventListener("change",()=>{ micLang=sel.value;
+    try{ localStorage.setItem(LS_MICLANG,micLang); }catch{}
+    const q=$("#q"); if(q) q.setAttribute("dir","auto"); });
+  const q=$("#q"); if(q) q.setAttribute("dir","auto");   // arabischer Text beginnt rechts
+})();
+
 /* ---------- Mikrofon / Sprachsuche (Browser Web-Speech, fail-soft) ---------- */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let recog=null, listening=false;
 function toggleMic(){
   if(!SR){ toast("Dein Browser kann keine Sprach-Eingabe. Tippen geht immer."); return; }
   if(listening){ try{ recog.stop(); }catch{} return; }
-  recog = new SR(); recog.lang="de-DE"; recog.interimResults=true; recog.maxAlternatives=1;
+  recog = new SR(); recog.lang=micLang;   // vorher fest "de-DE" — siehe MIC_LANGS recog.interimResults=true; recog.maxAlternatives=1;
   const mic=$("#mic");
   recog.onstart=()=>{ listening=true; mic.textContent="🔴"; mic.title="Zuhören… (zum Stoppen tippen)"; };
-  recog.onerror=()=>{ toast("Mikrofon nicht verfügbar oder abgelehnt."); };
-  recog.onend=()=>{ listening=false; mic.textContent="🎤"; mic.title="Per Sprache suchen"; renderResults($("#q").value); };
+  recog.onerror=(ev)=>{ toast(micFehlerText((ev&&ev.error)||"")); };
+  recog.onend=()=>{ listening=false; mic.textContent="🎤"; mic.title="Per Sprache suchen";
+    // Kein Fehler heisst nicht, dass die richtige Sprache ankam.
+    const schief=schriftPasstNicht($("#q").value, micLang); if(schief) toast(schief);
+    renderResults($("#q").value); };
   recog.onresult=e=>{
     let txt=""; for(let i=0;i<e.results.length;i++) txt+=e.results[i][0].transcript;
     $("#q").value=txt.trim(); renderResults($("#q").value);
