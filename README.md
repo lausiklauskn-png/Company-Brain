@@ -115,3 +115,11 @@ muss Klaus im Browser auf **zwei Geräten** bestätigen — bis dahin „ungepr�
 ---
 
 *Stand 2026-07-15 · Probeversion v0.1 gebaut. Privat.*
+
+---
+
+## Rechte
+
+Rechteinhaber ist Klaus Nitzsche. Welche Lizenz gilt und welche Rolle die
+KI-Werkzeuge hatten, steht in [`RECHTE.md`](RECHTE.md); der Lizenztext in
+[`LICENSE`](LICENSE).
