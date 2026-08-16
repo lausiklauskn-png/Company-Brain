@@ -27,6 +27,38 @@
     domainKeywords: ["Datei", "Dokument", "Bedeutungssuche", "Rechnung", "Vertrag", "Ordnung", "Firma", "Katalog"],
   };
 
+  // ---- Gerätename (frei wählbarer Anzeige-Name, lokal, kein PII) -------------
+  //
+  // Wozu: in einer Firma laufen mehrere Rechner dieselbe App. Im Raum stünde
+  // sonst dreimal „Company Brain", unterscheidbar nur an der kryptischen
+  // Kennung. Mit Namen: „Company Brain · Büro-PC".
+  //
+  // Der Name hängt NUR an der Anzeige/Anmeldung — NICHT an generateOwnSpore.
+  // Die signierte Identität behält ihren kanonischen Namen, es gibt kein
+  // Re-Sign, keinen Protokoll-Bump.
+  //
+  // SICHERHEIT: selbst gewählt und NICHT geprüft — ein Hinweis, kein
+  // Vertrauens-Beweis. Darum steht im Raum immer die Kennung daneben; wer
+  // wirklich wissen will, mit wem er spricht, sieht auf die Kennung.
+  //
+  // Der Speicher gilt je Adresse. Company Brain läuft unter einer EIGENEN
+  // Adresse (company-brain.family-projekt.de, siehe DEPLOY.md) — hier gibt es
+  // keine Geschwister-App, die den Namen setzen könnte. Ohne das Eingabefeld
+  // in der Seite wäre die Verdrahtung darunter also für immer leer.
+  function geraetename() { try { return (localStorage.getItem("sbkim_geraetename") || "").trim().slice(0, 40); } catch (_e) { return ""; } }
+  function displayNodeName() { var g = geraetename(); return g ? (CFG.nodeName + " · " + g) : CFG.nodeName; }
+
+  function wireGeraetename() {
+    var inp = document.getElementById("sbkim-geraetename");
+    if (!inp) return;
+    inp.value = geraetename();
+    inp.addEventListener("input", function () {
+      try { localStorage.setItem("sbkim_geraetename", String(inp.value || "").trim().slice(0, 40)); } catch (_e) {}
+      // Anzeige-Name sofort nachziehen, ohne Neuladen (fail-soft).
+      try { if (R() && R().configure) R().configure({ nodeName: displayNodeName() }); } catch (_e) {}
+    });
+  }
+
   function out(msg, append) {
     try {
       var el = document.getElementById("sbkim-rdv-out");
@@ -156,12 +188,13 @@
   function mount() {
     if (R() && typeof R().init === "function") {
       try {
-        R().init({ nodeName: CFG.nodeName, dbSuffix: DB_SUFFIX, createIdentity: createIdentity, prepareCorpus: prepareCorpus, ensureIdentity: true });
+        R().init({ nodeName: displayNodeName(), dbSuffix: DB_SUFFIX, createIdentity: createIdentity, prepareCorpus: prepareCorpus, ensureIdentity: true });
       } catch (e) { console.warn("[CompanyBrain] Rendezvous Modus A übersprungen:", e); }
     } else {
       out("Netz-Modul (Modul 23) nicht geladen — „Mit Kollegen verbinden“ ist aus.");
     }
     wireUI();
+    wireGeraetename();
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount);
   else mount();
