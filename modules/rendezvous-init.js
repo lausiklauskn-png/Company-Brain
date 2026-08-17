@@ -48,12 +48,25 @@
   function geraetename() { try { return (localStorage.getItem("sbkim_geraetename") || "").trim().slice(0, 40); } catch (_e) { return ""; } }
   function displayNodeName() { var g = geraetename(); return g ? (CFG.nodeName + " · " + g) : CFG.nodeName; }
 
+  // Alle Namensfelder der Seite gleichziehen. Company Brain trägt sein Feld in der
+  // eigenen Seite statt im Panel (es hat keine geteilte Panel-Datei) — die Marke
+  // hält es trotzdem an derselben Konvention (INTERFACES §11.7). Programmatisches
+  // Setzen von .value löst kein "input" aus — deshalb keine Schleife.
+  function syncGeraetenameFields() {
+    try {
+      var v = geraetename();
+      var list = document.querySelectorAll("[data-sbkim-geraetename]");
+      for (var i = 0; i < list.length; i++) { if (list[i].value !== v) list[i].value = v; }
+    } catch (_e) {}
+  }
+
   function wireGeraetename() {
     var inp = document.getElementById("sbkim-geraetename");
     if (!inp) return;
     inp.value = geraetename();
     inp.addEventListener("input", function () {
       try { localStorage.setItem("sbkim_geraetename", String(inp.value || "").trim().slice(0, 40)); } catch (_e) {}
+      try { window.dispatchEvent(new CustomEvent("sbkim:geraetename-changed")); } catch (_e) {}
       // Anzeige-Name sofort nachziehen, ohne Neuladen (fail-soft).
       try { if (R() && R().configure) R().configure({ nodeName: displayNodeName() }); } catch (_e) {}
     });
@@ -195,6 +208,8 @@
     }
     wireUI();
     wireGeraetename();
+    // Abgleich, falls eine andere Stelle den Namen ändert (fail-soft).
+    try { window.addEventListener("sbkim:geraetename-changed", syncGeraetenameFields); } catch (_e) {}
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount);
   else mount();

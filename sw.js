@@ -1,6 +1,6 @@
 /* Company Brain — Service Worker (offline App-Schale, cache-first).
    Fremde Origins werden durchgereicht (z. B. bewusst freigeschaltete EU-KI). */
-const CACHE = "company-brain-v0-4";
+const CACHE = "company-brain-v0-5";
 const SHELL = [
   "./",
   "./index.html",
