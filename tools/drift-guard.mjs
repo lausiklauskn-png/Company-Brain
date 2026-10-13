@@ -10,7 +10,7 @@ const ROOT = new URL('..', import.meta.url).pathname;
 const EXPECT = {
   'modules/01_storage.js':      '5a5a4bf64dfcc107da7ed70fb755d7db5cce7d80e963b3e2fbc2004537747820',
   'modules/02_spore.js':        '0dcde79489a5884f9358009a38411d88291a5cdf6e3c486b41f3d4944f915e47',
-  'modules/03_embedding.js':    'e4bb8bd6a237914e7841cab5165912daf636adf0ee90c5d4ffd0c74cc5d706e5',
+  'modules/03_embedding.js':    'a6ac64d7536da3fa5cc426d0f7db9440fdaf5ab4460f0bdc66a10eb8203b1b68',
   'modules/04_match.js':        '9e2648729758f644fe8e35b0e049ba8d66668a72dc6b7e4b41ebd75d52c0826a',
   'modules/05_anastomose.js':   '255ac79aeb3b0203e92f0cebd0a905e47c488b43efe18f41332a7d35520bbf23',
   'modules/05b_nostr_relay.js': '030aa2d260149f5627b84694a0b55e916cc186158009e260117d1e4f60d429bd',
