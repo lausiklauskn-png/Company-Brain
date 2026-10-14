@@ -1,6 +1,6 @@
 /* Company Brain — Service Worker (offline App-Schale, cache-first).
    Fremde Origins werden durchgereicht (z. B. bewusst freigeschaltete EU-KI). */
-const CACHE = "company-brain-v0-8";
+const CACHE = "company-brain-v0-9";
 
 /* ⚠ NUR EIGENE VORRAETE AUFRAEUMEN — `caches` gehoert dem URSPRUNG, nicht dem
  * Pfad. Auf lausiklauskn-png.github.io liegen rund zwanzig Apps; ein Filter,
@@ -21,6 +21,9 @@ const SHELL = [
   "./modules/02_spore.js",
   "./modules/03_embedding.js",
   "./modules/04_match.js",
+  "./modules/pruefer-mail.js",
+  "./modules/reinigung.js",
+  "./modules/ki-reinigung.js",
   "./modules/05_anastomose.js",
   "./modules/05b_nostr_relay.js",
   "./modules/noble-secp256k1.js",
