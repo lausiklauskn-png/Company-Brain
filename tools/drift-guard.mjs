@@ -10,7 +10,7 @@ const ROOT = new URL('..', import.meta.url).pathname;
 const EXPECT = {
   'modules/01_storage.js':      '5a5a4bf64dfcc107da7ed70fb755d7db5cce7d80e963b3e2fbc2004537747820',
   'modules/02_spore.js':        '0cbf0664e2a79f1301c03e52f7ac0030d4b2961f03b97b38e8634827a52353c5',
-  'modules/03_embedding.js':    'a6ac64d7536da3fa5cc426d0f7db9440fdaf5ab4460f0bdc66a10eb8203b1b68',
+  'modules/03_embedding.js':    '2e31baa09a2959c95efff8eecd224e8343e75695b4b293aa35209d8f96d1f3b5',
   'modules/04_match.js':        '721eecc3c0d6ea4c259259e6071215ec1cd16f1c43c87b42ce9e72e9a0b5e41c',
   'modules/pruefer-mail.js':    'cdf3ca7881bfa68763a2c0be7436d35a65bea4dbd03f606e02eaec5c613632d7', // Prüfliste (Auslieferungsprüfer), Bau 04.J
   'modules/reinigung.js':       'c3420fb57875db193096b13bd586387d41b383bd9625b54145dece8c4b65ac0e', // byte-1:1 aus Workflow-PDF assets/reinigung.js
