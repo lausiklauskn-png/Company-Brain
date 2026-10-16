@@ -19,7 +19,7 @@ const EXPECT = {
   'modules/05_anastomose.js':   '255ac79aeb3b0203e92f0cebd0a905e47c488b43efe18f41332a7d35520bbf23',
   'modules/05b_nostr_relay.js': '37eee5b196b3efad57131edd1cc3c0ee23acb97b5ca40740d6a0771db4b4a421',
   'modules/noble-secp256k1.js': '8f3879ca422c4fdfe7ca0361688636fa7cc550a59bd94d512ed6ec79aa3d55d1',
-  'modules/23_rendezvous.js':   '8b5edc106b68f23ddd1a45afd3bc52ae5f753399ba5d19a2ec065e794f718075',
+  'modules/23_rendezvous.js':   '6a5fc0e524df863432095dfdb73b73959a078ad4f4666ffa5f28612dd0a18fc1',
 };
 let fail = 0;
 for (const [rel, want] of Object.entries(EXPECT)) {
