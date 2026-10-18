@@ -181,6 +181,18 @@
     border-radius:20px;padding:5px 12px;font-size:.78rem;color:var(--good);margin-left:auto}
   .badge-off .dot{width:8px;height:8px;border-radius:50%;background:var(--good);box-shadow:0 0 8px var(--good)}
   @media(max-width:620px){ .pillars{grid-template-columns:1fr} header.top .badge-off{display:none} }
+  /* Installieren auch OBEN in der Kopfleiste (Klaus 2026-10-18: „man sieht nicht auf Anhieb, dass die App
+     installiert werden kann“). #install-platz hält den Platz frei, bis installieren.js den Knopf davorsetzt
+     (sonst springt die Leiste nach dem Laden); danach und als App ist er weg. Bis 620 px nur ⬇. */
+  header.top .kopfknopf{margin-left:auto;flex:0 0 auto;padding:9px 14px;font-size:.88rem}
+  header.top .badge-off + .kopfknopf{margin-left:0}
+  #install-platz{visibility:hidden}
+  #installieren + #install-platz{display:none}
+  @media(max-width:620px){header.top .kopfknopf{margin-left:auto;width:40px;height:40px;padding:0;justify-content:center}header.top .kopfknopf .t{display:none}}
+  @media (display-mode: standalone),(display-mode: minimal-ui),(display-mode: window-controls-overlay){#install-platz{display:none}}
+  /* Bis 420 px rückt die Kopfzeile enger zusammen, damit der Knopf dem Untertitel keine dritte Zeile
+     aufzwingt (gemessen bei 360 px: ohne das 91 → 111 px hoch). Bei 320 px bleibt sie: 91 → 111 px. */
+  @media(max-width:420px){header.top{gap:10px}header.top .kopfknopf{width:34px;height:34px}}
 </style>
 </head>
 <body>
@@ -199,6 +211,7 @@
     <div class="badge-off" title="Alles läuft in diesem Browser. Keine Datei verlässt das Gerät (außer du schaltest eine EU-KI bewusst frei).">
       <span class="dot"></span> offline
     </div>
+    <button class="kopfknopf" id="install-platz" type="button" tabindex="-1" aria-hidden="true"><span>⬇</span><span class="t"> Installieren</span></button>
   </header>
 
   <div class="pillars">
@@ -1785,6 +1798,6 @@ boot();
 </script>
 <!-- App-Adapter für „Mit Kollegen verbinden" (nach der App, nutzt window.__CB_getCorpus). -->
 <script src="modules/rendezvous-init.js"></script>
-<script src="assets/installieren.js?v=1" data-name="Company Brain" data-in="#install-box" data-klasse="primary" defer></script>
+<script src="assets/installieren.js?v=1" data-name="Company Brain" data-in="#install-box" data-klasse="primary" data-vor="install-platz" defer></script>
 </body>
 </html>

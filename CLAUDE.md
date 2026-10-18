@@ -75,3 +75,15 @@ git diff --stat origin/main origin/<branch>     # leer = der PR wäre leer
 - ⚠ **Benannte Grenzen:** nur die ersten 10 Seiten · Text über einem Foto/über sichtbarer Schrift bleibt · schräger Text nicht beurteilt · die Prüfliste sucht feste Wendungen · Halt-Texte nur DE/EN.
 - Probe `tools/e2e-ki-reinigung.mjs` (in `npm test`; KI gestellt; der Workflow-PDF-Klon liefert nur pdf-lib für die Probe, `WFPDF_KLON`). Gegenprobe: in Privat-Brain (`tools/gegenprobe-ki-reinigung.mjs`, derselbe Klebstoff).
 - ⚠ Nicht gemessen: am Gerät, mit echten Dokumenten, mit echter KI. Cache v0-9.
+
+## ⬇ Installieren auch oben in der Kopfleiste (Klaus 2026-10-18)
+
+Klaus: *„da, wo der Installationsbutton in den Einstellungen zu finden ist, vermutet keiner, dass er die App installieren
+kann … setze den Installationsbutton oben in die Navi-Leiste zusätzlich.“* Dieselbe Datei `assets/installieren.js`
+(unverändert, Sage `e0644084…c3`) setzt jetzt zwei Knöpfe: `data-vor="install-platz"` rechts in der Kopfzeile und weiter
+`data-in="#install-box"` in den Einstellungen. Als installierte App sind beide weg. `#install-platz` (Klasse `kopfknopf`,
+unsichtbar) hält den Platz frei, bis der Knopf davor steht. Bis 620 px nur ⬇, bis 420 px Abstand 10 px und Knopf 34 px.
+Gemessen im Browser (Kopfhöhe vorher → nachher): 320 px 91 → 111 (der Untertitel bricht in eine dritte Zeile) ·
+360 px 91 → 91 · 412 px 91 → 91 · 1280 px 71 → 71, kein Querlaufen, CLS 0; als App beide weg; Tipp ohne Angebot →
+lesbare Meldung; `getInstallabilityErrors` leer. Cache `company-brain-v0-20`. `npm test` grün (mit `WFPDF_KLON`).
+⚠ Am Tablet nicht gemessen.
