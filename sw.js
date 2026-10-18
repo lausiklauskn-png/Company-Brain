@@ -1,6 +1,6 @@
 /* Company Brain — Service Worker (offline App-Schale, cache-first).
    Fremde Origins werden durchgereicht (z. B. bewusst freigeschaltete EU-KI). */
-const CACHE = "company-brain-v0-18";
+const CACHE = "company-brain-v0-19";
 
 /* ⚠ NUR EIGENE VORRAETE AUFRAEUMEN — `caches` gehoert dem URSPRUNG, nicht dem
  * Pfad. Auf lausiklauskn-png.github.io liegen rund zwanzig Apps; ein Filter,
@@ -28,7 +28,8 @@ const SHELL = [
   "./modules/05b_nostr_relay.js",
   "./modules/noble-secp256k1.js",
   "./modules/23_rendezvous.js",
-  "./modules/rendezvous-init.js"
+  "./modules/rendezvous-init.js",
+  "./assets/installieren.js?v=1"
 ];
 
 self.addEventListener("install", e => {
