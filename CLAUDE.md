@@ -34,6 +34,14 @@ Ende. Zuletzt gemessen: **9 grün, 0 rot**.
   aus dem Vorrat sich ändert — `index.html` gehört dazu.
 - Die byte-kopierten SBKIM-Module unter `modules/` werden **nicht** abgewandelt.
 
+## ⬇ Installieren-Knopf (2026-10-18, Klaus: „unter Einstellungen, Installier-Button hinten“)
+
+`assets/installieren.js` ist byte-1:1 aus Sage-Protokol (SHA-256 `e0644084…c3`) — nie hier abwandeln. Der Knopf steht im
+Reiter ⚙️ Einstellungen im letzten Kasten `#install-box` hinten (`data-in`). Als installierte App verschwinden Knopf und
+Kasten. Im Vorrat (`?v=1`), Cache `company-brain-v0-19`. Gemessen im Browser: sichtbar als letztes Element, als App weg,
+Meldung lesbar, `getInstallabilityErrors` leer, App-Id `/index.html` (eigene Adresse, kein `id` im Manifest).
+`npm test` grün (die Probe zur KI-Reinigung braucht `WFPDF_KLON`, sonst „nicht lauffähig“). Am Tablet nicht gemessen.
+
 ## Netzweit — gilt in jedem Repo, steht in Sage
 
 Freibrief zum Selbst-Mergen · Gerätename im Verbinden-Panel · frisch von

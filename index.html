@@ -88,6 +88,7 @@
   .tab.on{background:var(--card2);color:var(--ink);border-color:var(--acc)}
   .tab b{color:var(--acc);font-family:var(--mono)}
   .panel{display:none} .panel.on{display:block}
+  @media (display-mode: standalone),(display-mode: minimal-ui),(display-mode: window-controls-overlay){#install-box{display:none}}
 
   /* search */
   .searchbox{display:flex;gap:10px;flex-wrap:wrap;align-items:center;
@@ -419,6 +420,13 @@
       </div>
       <pre id="sbkim-rdv-out" class="out" style="margin-top:10px;white-space:pre-wrap;min-height:1.4em"></pre>
       <div id="cbnet-room"></div>
+    </div>
+
+    <!-- Installieren (2026-10-18, Klaus: „unter Einstellungen, Installier-Button hinten“). Den Knopf hängt
+         assets/installieren.js (gemeinsame Datei aus Sage) HINTEN an diesen Kasten; als installierte App ist er weg. -->
+    <div class="note" id="install-box">
+      <h3>⬇ Als App installieren</h3>
+      <p>Legt Company Brain als eigene App aufs Gerät. Bietet der Browser es gerade nicht an, sagt ein Tipp, warum — und wie es von Hand geht.</p>
     </div>
   </section>
 
@@ -1777,5 +1785,6 @@ boot();
 </script>
 <!-- App-Adapter für „Mit Kollegen verbinden" (nach der App, nutzt window.__CB_getCorpus). -->
 <script src="modules/rendezvous-init.js"></script>
+<script src="assets/installieren.js?v=1" data-name="Company Brain" data-in="#install-box" data-klasse="primary" defer></script>
 </body>
 </html>
